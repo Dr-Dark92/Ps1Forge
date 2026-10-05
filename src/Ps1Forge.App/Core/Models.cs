@@ -4,7 +4,8 @@ public sealed record CueTrack(
     string FilePath,
     int Number,
     string Mode,
-    string? Index01);
+    string? Index01,
+    string? Index00 = null);
 
 public sealed record DiscAnalysis(
     string SelectedPath,
