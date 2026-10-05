@@ -14,7 +14,7 @@ public static class PkgValidator
         if(pkg[0]!=0x7F||pkg[1]!=(byte)'C'||pkg[2]!=(byte)'N'||pkg[3]!=(byte)'T') errors.Add("Invalid PKG magic.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x04,4))!=0x40000001) errors.Add("Unexpected PKG flags.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x0C,4))!=0xF) errors.Add("Unexpected PKG header type.");
-        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x20,4))!=PkgHeader.BodyOffset) errors.Add("Unexpected body offset.");
+        if(BinaryPrimitives.ReadUInt64BigEndian(pkg.Slice(0x20,8))!=PkgHeader.BodyOffset) errors.Add("Unexpected body offset.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x70,4))!=0xF) errors.Add("Unexpected DRM type.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x74,4))!=0x1A) errors.Add("Unexpected content type.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x78,4))!=0x0A000000) errors.Add("Unexpected content flags.");
@@ -39,7 +39,7 @@ public static class PkgValidator
         var headerDigest=SHA256.HashData(h.AsSpan(0,0xFE0));
         if(!headerDigest.AsSpan().SequenceEqual(h.AsSpan(0xFE0,32))) errors.Add("Final PKG header SHA-256 mismatch.");
         var count=BE32(h,0x10); var table=BE32(h,0x18);
-        var body=(ulong)BE32(h,0x20); var bodySize=BE64(h,0x28);
+        var body=BE64(h,0x20); var bodySize=BE64(h,0x28);
         var pfs=BE64(h,0x410); var pfsSize=BE64(h,0x418); var size=BE64(h,0x430);
         if(count==0) errors.Add("PKG contains no entries.");
         if(table!=PkgHeader.EntryTableOffset) errors.Add("Unexpected entry table offset.");
@@ -70,7 +70,7 @@ public static class PkgValidator
     private static async Task<List<ParsedEntry>> ValidateEntriesAsync(FileStream fs,uint count,uint table,ulong body,ulong bodySize,List<string> errors,CancellationToken ct)
     {
         var tableSize=(ulong)count*32UL;
-        if((ulong)table+tableSize>body){errors.Add("Entry table overlaps package body.");return [];}
+        if((ulong)table+tableSize>PkgHeader.BodyOffset+0x1000UL){errors.Add("Entry table exceeds the PKG metadata area.");return [];}
         var parsed=new List<ParsedEntry>();
         var raw=new byte[checked((int)tableSize)];
         fs.Position=table; await ReadExactAsync(fs,raw,ct);
