@@ -5,7 +5,8 @@ namespace Ps1Forge.Core;
 public sealed record NormalizedDisc(
     string BinPath,
     string CuePath,
-    int TrackCount);
+    int TrackCount,
+    IReadOnlyList<CueTrack> Tracks);
 
 public static class Ps1DiscNormalizer
 {
@@ -39,11 +40,12 @@ public static class Ps1DiscNormalizer
 
             await File.WriteAllTextAsync(
                 outCue,
-                BuildPackageCue(analysis.Tracks),
+                BuildPackageCue(AdjustTracks(analysis.Tracks)),
                 Encoding.ASCII,
                 cancellationToken);
 
-            return new NormalizedDisc(outBin, outCue, analysis.Tracks.Count);
+            var adjustedTracks=AdjustTracks(analysis.Tracks);
+            return new NormalizedDisc(outBin,outCue,adjustedTracks.Count,adjustedTracks);
         }
 
         var extension = Path.GetExtension(analysis.SelectedPath).ToLowerInvariant();
@@ -59,7 +61,29 @@ public static class Ps1DiscNormalizer
             Encoding.ASCII,
             cancellationToken);
 
-        return new NormalizedDisc(outBin, outCue, 1);
+        return new NormalizedDisc(outBin,outCue,1,[new CueTrack(outBin,1,"MODE2/2352","00:00:00")]);
+    }
+
+    private static IReadOnlyList<CueTrack> AdjustTracks(IReadOnlyList<CueTrack> tracks)
+    {
+        var result=new List<CueTrack>(tracks.Count);
+        long accumulatedSectors=0;
+        string? currentFile=null;
+        foreach(var track in tracks)
+        {
+            if(!string.Equals(currentFile,track.FilePath,StringComparison.OrdinalIgnoreCase))
+            {
+                if(currentFile is not null)
+                    accumulatedSectors+=new FileInfo(currentFile).Length/2352;
+                currentFile=track.FilePath;
+            }
+            var index01=SectorsToCueTime(accumulatedSectors+CueTimeToSectors(track.Index01));
+            var index00=string.IsNullOrWhiteSpace(track.Index00)
+                ? null
+                : SectorsToCueTime(accumulatedSectors+CueTimeToSectors(track.Index00));
+            result.Add(track with { FilePath="disc1.bin", Index01=index01, Index00=index00 });
+        }
+        return result;
     }
 
     private static string BuildPackageCue(IReadOnlyList<CueTrack> tracks)
@@ -67,22 +91,13 @@ public static class Ps1DiscNormalizer
         var sb = new StringBuilder();
         sb.Append("FILE \"disc1.bin\" BINARY\r\n");
 
-        long accumulatedSectors = 0;
-        string? currentFile = null;
         foreach (var track in tracks)
         {
-            if (!string.Equals(currentFile, track.FilePath, StringComparison.OrdinalIgnoreCase))
-            {
-                if (currentFile is not null)
-                    accumulatedSectors += new FileInfo(currentFile).Length / 2352;
-                currentFile = track.FilePath;
-            }
-
-            var absolute01 = accumulatedSectors + CueTimeToSectors(track.Index01);
+            var absolute01=CueTimeToSectors(track.Index01);
             sb.Append($"  TRACK {track.Number:00} {track.Mode}\r\n");
             if(!string.IsNullOrWhiteSpace(track.Index00))
             {
-                var absolute00=accumulatedSectors+CueTimeToSectors(track.Index00);
+                var absolute00=CueTimeToSectors(track.Index00);
                 sb.Append($"    INDEX 00 {SectorsToCueTime(absolute00)}\r\n");
             }
             sb.Append($"    INDEX 01 {SectorsToCueTime(absolute01)}\r\n");
