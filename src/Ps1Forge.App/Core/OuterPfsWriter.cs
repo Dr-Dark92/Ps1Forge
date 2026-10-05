@@ -15,6 +15,7 @@ public static class OuterPfsWriter
     {
         if(seed.Length!=16) throw new ArgumentException("PFS seed must be 16 bytes.",nameof(seed));
         var pfscSize=new FileInfo(pfscPath).Length;
+        var fileTime=DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // Four inodes: super-root, flat-path-table, uroot, pfs_image.dat.
         const int inodeCount=4;
@@ -56,11 +57,11 @@ public static class OuterPfsWriter
         dataSigs.Add((urootBlock,rootInodeOff+100,BlockSize));
         finalSigs.AddRange(layout.FinalSignatures);
 
-        WriteHeader(fs,totalBlocks,inodeCount,inodeBlockCount,seed);
-        WriteInode(fs,superInodeOff,(ushort)(Dir|Rx),1,Internal|Unk2|Unk3,BlockSize,1,superRootBlock,null);
-        WriteInode(fs,flatInodeOff,(ushort)(File|Rx),1,Internal|Unk2|Unk3,8,1,flatBlock,null);
-        WriteInode(fs,rootInodeOff,(ushort)(Dir|Rx),2,Unk2|Unk3,BlockSize,1,urootBlock,null);
-        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.InodeIndirectBlocks,logicalInnerPfsSize);
+        WriteHeader(fs,totalBlocks,inodeCount,inodeBlockCount,seed,fileTime);
+        WriteInode(fs,superInodeOff,(ushort)(Dir|Rx),1,Internal|Unk2|Unk3,BlockSize,1,superRootBlock,null,null,fileTime);
+        WriteInode(fs,flatInodeOff,(ushort)(File|Rx),1,Internal|Unk2|Unk3,8,1,flatBlock,null,null,fileTime);
+        WriteInode(fs,rootInodeOff,(ushort)(Dir|Rx),2,Unk2|Unk3,BlockSize,1,urootBlock,null,null,fileTime);
+        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.InodeIndirectBlocks,logicalInnerPfsSize,fileTime);
 
         fs.Position=superRootBlock*BlockSize;
         PfsPrimitives.WriteDirent(fs,1,2,"flat_path_table");
@@ -91,7 +92,7 @@ public static class OuterPfsWriter
         return fs.Length;
     }
 
-    private static void WriteHeader(Stream s,long blocks,int inodeCount,int inodeBlocks,byte[] seed)
+    private static void WriteHeader(Stream s,long blocks,int inodeCount,int inodeBlocks,byte[] seed,long fileTime)
     {
         var h=new byte[BlockSize];
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0,8),1);
@@ -106,19 +107,19 @@ public static class OuterPfsWriter
         // Header's embedded dinodeS64 starts at 0x50. Its first signed block
         // reference begins at +0x68, therefore global offset 0xB8.
         var inodeSig=SignedPfsPrimitives.BuildSignedInode64(
-            0,1,Readonly,inodeBlocks*BlockSize,(uint)inodeBlocks,
-            [new SignedBlockRef(new byte[32],1)]);
+            0,1,0,inodeBlocks*BlockSize,(uint)inodeBlocks,
+            [new SignedBlockRef(new byte[32],1)],fileTime);
         inodeSig.CopyTo(h,0x50);
         BinaryPrimitives.WriteInt32LittleEndian(h.AsSpan(0x36C,4),1);
         seed.CopyTo(h,0x370);
         s.Position=0;s.Write(h);
     }
 
-    private static void WriteInode(Stream s,long off,ushort mode,ushort links,uint flags,long size,uint blocks,long first,IReadOnlyList<long>? indirect,long? compressed=null)
+    private static void WriteInode(Stream s,long off,ushort mode,ushort links,uint flags,long size,uint blocks,long first,IReadOnlyList<long>? indirect,long? compressed=null,long timestamp=0)
     {
         var direct=new List<SignedBlockRef>{new(new byte[32],checked((int)first))};
         var inds=(indirect??Array.Empty<long>()).Select(x=>new SignedBlockRef(new byte[32],checked((int)x))).ToList();
-        var d=SignedPfsPrimitives.BuildSignedInode32(mode,links,flags,size,blocks,direct,inds);
+        var d=SignedPfsPrimitives.BuildSignedInode32(mode,links,flags,size,blocks,direct,inds,timestamp);
         if(compressed.HasValue) BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(16,8),compressed.Value);
         s.Position=off;s.Write(d);
     }
