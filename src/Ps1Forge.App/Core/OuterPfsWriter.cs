@@ -20,22 +20,15 @@ public static class OuterPfsWriter
         const int inodeCount=4;
         const int inodeBlockCount=1;
         const long inodeBlock=1, superRootBlock=2, flatBlock=3, emptyBlock=4;
-        var nextIndirect=5L;
-
-        var dataBlocks=Math.Max(1,(pfscSize+BlockSize-1)/BlockSize);
-        var perIndirect=BlockSize/36;
-        var indirectCount=dataBlocks<=12?0:
-            dataBlocks<=12+perIndirect?1:
-            2+(int)((dataBlocks-(12+perIndirect)+perIndirect-1)/perIndirect);
-        var nextData=nextIndirect+indirectCount;
+        var nextBlock=5L;
 
         // pfs_image inode is #3, at block 1 + 3*0x2c8.
         var fileInodeOffset=inodeBlock*BlockSize+3L*SignedPfsPrimitives.SignedInode32Size;
         var layout=OuterPfsAllocator.AllocateLargeFile(
-            pfscSize,fileInodeOffset,ref nextIndirect,ref nextData);
+            pfscSize,fileInodeOffset,ref nextBlock);
 
-        var urootBlock=nextData++;
-        var totalBlocks=nextData;
+        var urootBlock=nextBlock++;
+        var totalBlocks=nextBlock;
         await using var fs=new FileStream(outputPath,FileMode.Create,FileAccess.ReadWrite,FileShare.None,1024*1024,FileOptions.Asynchronous);
         fs.SetLength(totalBlocks*BlockSize);
 
