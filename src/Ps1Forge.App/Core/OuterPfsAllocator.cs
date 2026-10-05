@@ -3,7 +3,8 @@ namespace Ps1Forge.Core;
 public sealed record OuterPfsFileLayout(
     long DataStartBlock,
     long DataBlocks,
-    IReadOnlyList<long> IndirectBlocks,
+    IReadOnlyList<long> InodeIndirectBlocks,
+    IReadOnlyList<long> AllIndirectBlocks,
     IReadOnlyList<(long Block,long SignatureOffset,int Size)> DataSignatures,
     IReadOnlyList<(long Block,long SignatureOffset,int Size)> FinalSignatures);
 
@@ -22,7 +23,8 @@ public static class OuterPfsAllocator
     {
         var blocks=Math.Max(1,CeilDiv(fileSize,BlockSize));
         var perIndirect=BlockSize/SignatureRecordSize;
-        var indirect=new List<long>();
+        var inodeIndirect=new List<long>();
+        var allIndirect=new List<long>();
         var dataSigs=new List<(long,long,int)>();
         var finalSigs=new List<(long,long,int)>();
 
@@ -38,7 +40,8 @@ public static class OuterPfsAllocator
         if(remaining>0)
         {
             var level1=nextIndirectBlock++;
-            indirect.Add(level1);
+            inodeIndirect.Add(level1);
+            allIndirect.Add(level1);
             finalSigs.Add((level1,inodeOffset+SignedInodeIndirectOffset(0),BlockSize));
 
             var first=Math.Min(remaining,perIndirect);
@@ -52,7 +55,8 @@ public static class OuterPfsAllocator
             if(remaining>0)
             {
                 var level2Root=nextIndirectBlock++;
-                indirect.Add(level2Root);
+                inodeIndirect.Add(level2Root);
+                allIndirect.Add(level2Root);
                 finalSigs.Add((level2Root,inodeOffset+SignedInodeIndirectOffset(1),BlockSize));
 
                 long rootSlot=0;
@@ -62,7 +66,7 @@ public static class OuterPfsAllocator
                         throw new NotSupportedException("Outer PFS file exceeds two-level signature capacity.");
 
                     var leaf=nextIndirectBlock++;
-                    indirect.Add(leaf);
+                    allIndirect.Add(leaf);
                     finalSigs.Add((leaf,level2Root*BlockSize+rootSlot*SignatureRecordSize,BlockSize));
                     rootSlot++;
 
@@ -77,7 +81,7 @@ public static class OuterPfsAllocator
             }
         }
 
-        return new(dataStart,blocks,indirect,dataSigs,finalSigs);
+        return new(dataStart,blocks,inodeIndirect,allIndirect,dataSigs,finalSigs);
     }
 
     public static long SignedInodeDirectOffset(int index)
