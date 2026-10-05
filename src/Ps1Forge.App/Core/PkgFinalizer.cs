@@ -7,13 +7,25 @@ public static class PkgFinalizer
     public static async Task ApplyCoreDigestsAsync(
         FileStream pkg,
         PkgBodyLayout layout,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? contentId=null,
+        byte[]? paramSfo=null)
     {
         var pfsSize=checked((long)(layout.PackageSize-layout.PfsOffset));
         var fullPfs=await HashRangeAsync(pkg,checked((long)layout.PfsOffset),pfsSize,ct);
         var signedPfs=await HashRangeAsync(pkg,checked((long)layout.PfsOffset),Math.Min(0x10000L,pfsSize),ct);
         await WriteAtAsync(pkg,0x440,fullPfs,ct);
         await WriteAtAsync(pkg,0x460,signedPfs,ct);
+
+        if(contentId is not null && paramSfo is not null)
+        {
+            var generalEntry=layout.Entries.FirstOrDefault(x=>x.Id==PkgBodyBuilder.GeneralDigests);
+            if(generalEntry is null) throw new InvalidDataException("GENERAL_DIGESTS entry is missing.");
+            var header=await ReadAtAsync(pkg,0,PkgHeader.HeaderSize,ct);
+            var general=PkgGeneralDigests.Build(header,contentId,paramSfo,fullPfs);
+            if(general.Length!=generalEntry.DataSize) throw new InvalidDataException("GENERAL_DIGESTS size mismatch.");
+            await WriteAtAsync(pkg,generalEntry.DataOffset,general,ct);
+        }
 
         var sorted=layout.Entries.OrderBy(x=>x.Id).ToList();
         var digestEntry=sorted.FirstOrDefault(x=>x.Id==PkgBodyBuilder.Digests);
