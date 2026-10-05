@@ -9,6 +9,7 @@ public static class PkgAssembler
         string passcode,
         IReadOnlyList<PkgBodyEntry> entries,
         byte[] paramSfo,
+        Func<ulong,byte[]> finalizeParamSfo,
         Func<byte[],byte[]> headerWrapper,
         CancellationToken ct=default)
     {
@@ -17,6 +18,16 @@ public static class PkgAssembler
         if(entries.Count==0) throw new ArgumentException("At least one PKG entry is required.",nameof(entries));
 
         var layout=PkgBodyBuilder.Plan(entries,checked((ulong)pfsInfo.Length));
+        var finalParamSfo=finalizeParamSfo(layout.PackageSize);
+        if(finalParamSfo.Length!=paramSfo.Length)
+            throw new InvalidDataException($"Final param.sfo size changed from {paramSfo.Length} to {finalParamSfo.Length} bytes.");
+        var paramEntry=layout.Entries.FirstOrDefault(e=>e.Id==PkgBodyBuilder.ParamSfo)
+            ?? throw new InvalidDataException("PKG param.sfo entry is missing.");
+        if(finalParamSfo.Length!=paramEntry.Data.Length)
+            throw new InvalidDataException("Final param.sfo does not fit the planned PKG entry.");
+        paramEntry.Data=finalParamSfo;
+        paramSfo=finalParamSfo;
+
         var mainSize=layout.Entries
             .Where(e=>e.Id is PkgBodyBuilder.EntryKeys or PkgBodyBuilder.ImageKey or PkgBodyBuilder.GeneralDigests or PkgBodyBuilder.Metas or PkgBodyBuilder.Digests)
             .Aggregate(0u,(sum,e)=>checked(sum+e.DataSize));
