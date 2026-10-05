@@ -79,13 +79,11 @@ public static class InnerPfsWriter
         output.SetLength((long)block * PfsPrimitives.BlockSize);
 
         WriteHeader(output, inodeCount, inodeBlocks, block);
-        output.Position = PfsPrimitives.BlockSize;
-
-        WriteInode(output, (ushort)(ModeDir | ReadExec), 1, FlagInternal | FlagReadonly, PfsPrimitives.BlockSize, 1, superRoot.StartBlock, 1);
-        WriteInode(output, (ushort)(ModeFile | ReadExec), 1, FlagInternal | FlagReadonly, flat.Size, flat.Blocks, flat.StartBlock, 1);
-        WriteInode(output, (ushort)(ModeDir | ReadExec), DirLinks(root), FlagReadonly, PfsPrimitives.BlockSize, 1, root.StartBlock, 1);
+        WriteInodeAt(output, superRoot.Inode, inodesPerBlock, (ushort)(ModeDir | ReadExec), 1, FlagInternal | FlagReadonly, PfsPrimitives.BlockSize, 1, superRoot.StartBlock, 1);
+        WriteInodeAt(output, flat.Inode, inodesPerBlock, (ushort)(ModeFile | ReadExec), 1, FlagInternal | FlagReadonly, flat.Size, flat.Blocks, flat.StartBlock, 1);
+        WriteInodeAt(output, root.Inode, inodesPerBlock, (ushort)(ModeDir | ReadExec), DirLinks(root), FlagReadonly, PfsPrimitives.BlockSize, 1, root.StartBlock, 1);
         foreach (var n in nodes)
-            WriteInode(output,
+            WriteInodeAt(output, n.Inode, inodesPerBlock,
                 (ushort)((n.IsDir ? ModeDir : ModeFile) | ReadExec),
                 n.IsDir ? DirLinks(n) : (ushort)1,
                 FlagReadonly,
@@ -197,6 +195,14 @@ public static class InnerPfsWriter
         s.Write(h);
     }
 
+    private static void WriteInodeAt(Stream s,uint inode,int inodesPerBlock,ushort mode,ushort nlink,uint flags,long size,uint blocks,int startBlock,long timestamp)
+    {
+        var inodeBlock=inode/(uint)inodesPerBlock;
+        var slot=inode%(uint)inodesPerBlock;
+        s.Position=(1L+inodeBlock)*PfsPrimitives.BlockSize+slot*PfsPrimitives.UnsignedInodeSize;
+        WriteInode(s,mode,nlink,flags,size,blocks,startBlock,timestamp);
+    }
+
     private static void WriteInode(Stream s, ushort mode, ushort nlink, uint flags, long size, uint blocks, int startBlock, long timestamp)
     {
         Span<byte> d = stackalloc byte[PfsPrimitives.UnsignedInodeSize];
@@ -206,8 +212,8 @@ public static class InnerPfsWriter
         BinaryPrimitives.WriteInt64LittleEndian(d[8..], size);
         BinaryPrimitives.WriteInt64LittleEndian(d[16..], size);
         for (var i = 0; i < 4; i++) BinaryPrimitives.WriteInt64LittleEndian(d[(24 + i * 8)..], timestamp);
-        BinaryPrimitives.WriteUInt32LittleEndian(d[88..], blocks);
-        BinaryPrimitives.WriteInt32LittleEndian(d[92..], startBlock);
+        BinaryPrimitives.WriteUInt32LittleEndian(d[96..], blocks);
+        BinaryPrimitives.WriteInt32LittleEndian(d[100..], startBlock);
         s.Write(d);
     }
 }
