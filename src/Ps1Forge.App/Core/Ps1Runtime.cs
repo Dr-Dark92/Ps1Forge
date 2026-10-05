@@ -20,8 +20,12 @@ public static class Ps1Runtime
         root = Path.GetFullPath(root);
         var missing = RequiredFiles
             .Where(relative => !File.Exists(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar))))
-            .ToArray();
+            .ToList();
 
-        return new RuntimeValidation(missing.Length == 0, root, missing);
+        var bios = Path.Combine(root, "bios");
+        if (!Directory.Exists(bios) || !Directory.EnumerateFiles(bios, "*", SearchOption.AllDirectories).Any())
+            missing.Add("bios/ (non-empty directory)");
+
+        return new RuntimeValidation(missing.Count == 0, root, missing);
     }
 }
