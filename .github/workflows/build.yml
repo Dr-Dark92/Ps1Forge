@@ -17,6 +17,8 @@ jobs:
         run: dotnet restore Ps1Forge.sln
       - name: Build
         run: dotnet build Ps1Forge.sln -c Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test Ps1Forge.sln -c Release --no-build --verbosity normal
       - name: Publish
         run: dotnet publish src/Ps1Forge.App/Ps1Forge.App.csproj -c Release -r win-x64 --self-contained false -o artifacts/Ps1Forge
       - uses: actions/upload-artifact@v4
