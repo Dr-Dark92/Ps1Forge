@@ -35,6 +35,7 @@ public static class PkgAssembler
                 throw new InvalidDataException($"PKG size mismatch after assembly: {pkg.Length} != {layout.PackageSize}.");
 
             await pkg.FlushAsync(ct);
+            await PlayGoShaWriter.ApplyAsync(pkg,layout,ct);
             await PkgFinalizer.ApplyCoreDigestsAsync(pkg,layout,ct,contentId,paramSfo);
             await PkgFinalizer.ApplyHeaderDigestAsync(pkg,ct);
             await pkg.FlushAsync(ct);
