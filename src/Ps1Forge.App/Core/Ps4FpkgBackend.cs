@@ -51,6 +51,13 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report($"Normalized disc: {Path.GetFileName(normalized.BinPath)} ({normalized.TrackCount} track(s))");
 
+        if (analysis.Tracks.Count > 0)
+        {
+            progress?.Report("Generating PS1 TOC...");
+            var toc = Ps1TocWriter.Build(analysis.Tracks, new FileInfo(normalized.BinPath).Length);
+            await File.WriteAllBytesAsync(Path.Combine(data, "disc1.toc"), toc, cancellationToken);
+        }
+
         progress?.Report("Preparing PS1HD configuration...");
         await File.WriteAllTextAsync(
             Path.Combine(app0, "config-title.txt"),
@@ -61,6 +68,13 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         var title = analysis.Serial;
         var paramSfo = Ps4Metadata.BuildParamSfo(title, analysis.Serial);
         await File.WriteAllBytesAsync(Path.Combine(sceSys, "param.sfo"), paramSfo, cancellationToken);
+
+        progress?.Report("Generating keystone...");
+        const string packagePasscode = "00000000000000000000000000000000";
+        await File.WriteAllBytesAsync(
+            Path.Combine(sceSys, "keystone"),
+            Keystone.Build(packagePasscode),
+            cancellationToken);
 
         progress?.Report("Preparing artwork...");
         ArtworkProcessor.CreateIcon(artworkPath, sceSys);
