@@ -96,13 +96,29 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Wrapping inner PFS as PFSC...");
         var pfsc = Path.Combine(stagingDirectory, "pfs_image.dat");
-        await PfscWriter.WrapAsync(innerPfs, pfsc, true, progress, cancellationToken);
+        // Keep the first compatibility build uncompressed. PKGForge uses a
+        // non-default zlib window for compressed PFSC blocks; uncompressed
+        // 64 KiB blocks avoid introducing that compatibility variable.
+        await PfscWriter.WrapAsync(innerPfs, pfsc, false, progress, cancellationToken);
 
-        progress?.Report("Inner PFS/PFSC complete.");
+        progress?.Report("Building signed/encrypted outer PFS...");
+        var contentId = Ps4Metadata.ContentId(analysis.Serial);
+        var ekpfs = PackageCrypto.ComputeKey(contentId, packagePasscode, 1);
+        var seed = new byte[16];
+        var outerPfs = Path.Combine(stagingDirectory, "outer.pfs");
+        var outerSize = await OuterPfsWriter.BuildAsync(
+            pfsc,
+            outerPfs,
+            ekpfs,
+            seed,
+            new FileInfo(innerPfs).Length,
+            cancellationToken);
 
-        // Do not silently emit a fake .pkg. The remaining stage is the signed,
-        // encrypted outer PFS plus final PKG entry table and metadata.
+        progress?.Report($"Outer PFS complete ({outerSize:N0} bytes).");
+
+        // Do not silently emit a fake .pkg. The next stage is final PKG
+        // metadata/RIF/entry-table assembly around this validated PFS payload.
         throw new NotSupportedException(
-            "Inner PFS and PFSC are complete. Outer PFS/PKG serialization is not implemented yet.");
+            "Signed/encrypted outer PFS is complete. Final PKG serialization is not implemented yet.");
     }
 }
