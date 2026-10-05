@@ -22,7 +22,7 @@ public sealed class FilePkgCryptoProvider : IPkgCryptoProvider
 
         var entryKeys=BuildEntryKeys(contentId,passcode,publicKeys);
         var imageKey=PkgRsa.EncryptKey(fakeModulus,ekpfs);
-        var license=DebugRifSigner.Build(contentId);
+        var license=DebugRifSigner.Sign(PkgLicense.BuildUnsignedDebugRif(contentId));
         return new(entryKeys,imageKey,license,digest=>PkgRsa.EncryptKey(headerModulus,digest));
     }
 
