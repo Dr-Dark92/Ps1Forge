@@ -88,9 +88,19 @@ public sealed class Ps4FpkgBackend : IPackageBackend
             File.Copy(source, target, true);
         }
 
-        // Do not silently emit a fake .pkg. The next implementation stage is the
-        // native inner-PFS -> PFSC -> signed outer-PFS -> PKG serializer.
+        progress?.Report("Building inner PFS...");
+        var innerPfs = Path.Combine(stagingDirectory, "inner.pfs");
+        await InnerPfsWriter.BuildAsync(app0, innerPfs, progress, cancellationToken);
+
+        progress?.Report("Wrapping inner PFS as PFSC...");
+        var pfsc = Path.Combine(stagingDirectory, "pfs_image.dat");
+        await PfscWriter.WrapAsync(innerPfs, pfsc, true, progress, cancellationToken);
+
+        progress?.Report("Inner PFS/PFSC complete.");
+
+        // Do not silently emit a fake .pkg. The remaining stage is the signed,
+        // encrypted outer PFS plus final PKG entry table and metadata.
         throw new NotSupportedException(
-            "PS4 staging is valid. Native PFS/PFSC/PKG serialization is not implemented yet.");
+            "Inner PFS and PFSC are complete. Outer PFS/PKG serialization is not implemented yet.");
     }
 }
