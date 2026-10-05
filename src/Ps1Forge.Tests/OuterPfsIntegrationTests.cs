@@ -21,7 +21,7 @@ public sealed class OuterPfsIntegrationTests
             var seed=Enumerable.Range(0,16).Select(i=>(byte)(0xA0+i)).ToArray();
             var outer=Path.Combine(root,"outer.pfs");
             var outerSize=await OuterPfsWriter.BuildAsync(pfsc,outer,ekpfs,seed,0x30000,CancellationToken.None);
-            Assert.True(outerSize>=0x70000);
+            // Reference signed-PFS layout: blocks 0..4 are metadata/reserved,`n            // block 5 is uroot, and the two PFSC data blocks begin at block 6.`n            Assert.Equal(0x80000,outerSize);
             Assert.Equal(0,outerSize%OuterPfsCrypto.BlockSize);
 
             const string contentId="UP9000-SLUS00000_00-0123456789ABCDEF";
