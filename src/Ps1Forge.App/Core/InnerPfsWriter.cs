@@ -48,8 +48,10 @@ public static class InnerPfsWriter
 
         foreach (var d in dirs.Prepend(root))
         {
-            d.Size = Math.Max(PfsPrimitives.BlockSize, DirectoryPayloadSize(d));
-            d.Blocks = 1;
+            var payloadSize=DirectoryPayloadSize(d);
+            d.Blocks=(uint)Math.Max(1,PfsPrimitives.CeilDiv(payloadSize,PfsPrimitives.BlockSize));
+            if(d.Blocks>12) throw new InvalidDataException($"Directory {d.FullPath} requires indirect PFS blocks, which are not supported.");
+            d.Size=(long)d.Blocks*PfsPrimitives.BlockSize;
         }
         foreach (var f in files)
         {
@@ -67,8 +69,13 @@ public static class InnerPfsWriter
         block += (int)flat.Blocks;
         block++; // collision-resolver/empty compatibility block
 
-        root.StartBlock = block++;
-        foreach (var d in dirs) d.StartBlock = block++;
+        root.StartBlock=block;
+        block+=checked((int)root.Blocks);
+        foreach(var d in dirs)
+        {
+            d.StartBlock=block;
+            block+=checked((int)d.Blocks);
+        }
         foreach (var f in files)
         {
             f.StartBlock = block;
@@ -232,7 +239,9 @@ public static class InnerPfsWriter
         BinaryPrimitives.WriteInt64LittleEndian(d[16..], size);
         for (var i = 0; i < 4; i++) BinaryPrimitives.WriteInt64LittleEndian(d[(24 + i * 8)..], timestamp);
         BinaryPrimitives.WriteUInt32LittleEndian(d[96..], blocks);
-        BinaryPrimitives.WriteInt32LittleEndian(d[100..], startBlock);
+        if(blocks>12) throw new InvalidDataException("Unsigned PFS inode requires unsupported indirect blocks.");
+        for(var i=0;i<blocks;i++)
+            BinaryPrimitives.WriteInt32LittleEndian(d[(100+(int)i*4)..],checked(startBlock+(int)i));
         s.Write(d);
     }
 }
