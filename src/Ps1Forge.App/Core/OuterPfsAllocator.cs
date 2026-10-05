@@ -83,13 +83,13 @@ public static class OuterPfsAllocator
     public static long SignedInodeDirectOffset(int index)
     {
         if(index is <0 or >=12) throw new ArgumentOutOfRangeException(nameof(index));
-        return 92L+index*SignatureRecordSize;
+        return 100L+index*SignatureRecordSize;
     }
 
     public static long SignedInodeIndirectOffset(int index)
     {
         if(index is <0 or >=5) throw new ArgumentOutOfRangeException(nameof(index));
-        return 92L+12L*SignatureRecordSize+index*SignatureRecordSize;
+        return 100L+12L*SignatureRecordSize+index*SignatureRecordSize;
     }
 
     private static long CeilDiv(long v,long d)=>(v+d-1)/d;
