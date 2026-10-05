@@ -195,7 +195,17 @@ public sealed class MainForm : Form
 
         try
         {
-            var service = new ConversionService(new ManifestPackageBackend());
+            var appRoot = AppContext.BaseDirectory;
+            var runtimeRoot = Path.Combine(appRoot, "runtime");
+            var keyRoot = Path.Combine(appRoot, "keys");
+
+            if (!Directory.Exists(runtimeRoot))
+                throw new InvalidDataException("Missing runtime folder beside Ps1Forge.exe.");
+            if (!Directory.Exists(keyRoot))
+                throw new InvalidDataException("Missing keys folder beside Ps1Forge.exe.");
+
+            var service = new ConversionService(
+                new Ps4FpkgBackend(runtimeRoot, new FilePkgCryptoProvider(keyRoot)));
             var progress = new Progress<string>(line => _status.Text = line);
 
             var result = await service.ConvertAsync(
@@ -207,9 +217,8 @@ public sealed class MainForm : Form
 
             MessageBox.Show(
                 this,
-                "Pipeline test completed successfully.\n\n" +
-                result.OutputPath +
-                "\n\nThe current backend emits a validation manifest; the PS4 PKG backend is the next integration step.",
+                "PS4 package created and validated successfully.\n\n" +
+                result.OutputPath,
                 "Ps1Forge",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
