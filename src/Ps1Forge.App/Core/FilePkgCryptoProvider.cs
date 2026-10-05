@@ -2,45 +2,27 @@ namespace Ps1Forge.Core;
 
 public sealed class FilePkgCryptoProvider : IPkgCryptoProvider
 {
-    private readonly string _keyRoot;
-
-    public FilePkgCryptoProvider(string keyRoot) => _keyRoot = keyRoot;
+    // Public RSA moduli used by the standard fPKG metadata layout.
+    // These are public-key values, not Sony private keys or user secrets.
+    private static readonly byte[] PkgPublic0 = Convert.FromHexString("D6AA0C5C0D6DC9E5EE28F9AA8DBC7236699617B65F8A4D969C8841330CB3FBA0D6332D202FE30DADE07A3E4A282F76291B4F8A347436C8C940464DB2BEEDCB723E81FFA3AC52A24513C781B2215CBE979D070E8FC846E9BBA6A56ED44887BBE6F60C486650109AAB0F36B01F28E056E408D376629F0703263676B58EB37392665857943ACFBC212BA008BA2C378118F7D81EA91A456895BF16861735309A79BFA9DB96C21F0D9FFC8B3B4F81EAAD87F6730F709A2918398E9C369A23BC94069B1B7B34A18B5F06C47965E965B3FBF6132FB7C0B54E488EB661A995D83E7F57E07B4E2125096F5F474D333C0634AE85E89D4806BDD1EE0C9CEF63414C26FDC88F");
+    private static readonly byte[] PkgPublic1 = Convert.FromHexString("B96953EEA54B1EB2F715EAB62172BCEC4D8FD39D483609D4F632043AAB2057D9510FED357AF9863CC8CF652427DC86B2816C480D5F30CB16C733B43ED38CC19CE21AD682C1ED9226A2408BD4C0807F9FBDA64B942092F7F42DCB88E5135F92D2B1B9097995AB0E42E3CA3691159DEDA93AC1B0A218D71E128AD2DB114FBDE5328B613753EA4A4AE6FDF94B4D8EDE120EBF414E3C76E0C9398CD92DB8A5F48833F3364FA98BBB9289ECB2A8DE9FD9CFEDA74E55769BED39C5E1AB0C5D89075E2B339C6DA748AA2C5799A7D48AFF910A554AAF344A07CCED8C1DE45C54D6B4BDDA5995F16E64C6DA016556254779855E4C9768E7FDDFD7D7DF56BD173FA5DDCEDD");
+    private static readonly byte[] PkgPublic3 = Convert.FromHexString("D212FC335F6DDB831609628B0356273782D477853529392D526B8C4C8CFB06C1845BE7D4F7BCD24E6245CD2ABBD77776453655273FB3F5F98EDA4BEFAA59AEB39BEA5498D206326A58312AE0D44F90B50A7DECF43A9C52672D99318E0C43E682FE0746E12E50D41F2D2F7ED908BA06B3BF2E203F4E3FFE44FFAA50435791699449158282E40F4C8D9D2CC95B1D64BF888BD4C594E76547841EE57910FB989347B97D8512A640982CF792BC951932EDE890560D65C1AA78C62E54FD5F54A1F67EE5E05F61C120B4B9B4330870E4DF8956ED012946775F8CB8A9F51E2EB3B9BFE009B78D28D4A6C3B81E1F07EBB4120B95B88530FDDC3913D07CDC8FEDF9C9A3C1");
+    private static readonly byte[] FakeModulus = Convert.FromHexString("C6CF71E7E59AF0D12A2C458BF92A0EC143058BC37117801DCD497DDE359D259BA0D7A0F27D6C087EAA5502682B23C644B84418EB56CF16A24803C9E74F87EB3D30C31588BF20E79DFF770CDE1D241E63A94F8ABF5BBE601968333BFCED9F474E5FF8EACB3D00BD6701F92C6DC6AC1364E76714F3DC52696AB9832C4230131BB2D8A5020D79ED96B10DF8CC0CDF81954F035809570E80692EFEFF5277EA7528A8FBC9BEBF9FBBB7798E1805E180BD50349481D353C269A2D24CCF6CF4572C104A3FFB22FD8B97E2C95BA62BCDD61B6BDB687F4BC2A05034C005E58DEF2467FF9340CF2D62A2A050B1F13AA83DFD80D1F9B80522AFC8354590588EE33A7CBD3E27");
 
     public PkgPreparedCrypto Prepare(string contentId,string passcode,byte[] ekpfs)
     {
         if(ekpfs.Length!=32) throw new ArgumentException("EKPFS must be exactly 32 bytes.",nameof(ekpfs));
 
-        // Reference fPKG ENTRY_KEYS uses public key slots 0, 1 and 3.
-        // Slots 2, 4, 5 and 6 are intentionally zero-filled; silently
-        // zeroing a required slot would produce a structurally valid but
-        // unusable package.
         var publicKeys=new byte[7][];
         for(var i=0;i<publicKeys.Length;i++) publicKeys[i]=new byte[256];
-        publicKeys[0]=ReadRequiredModulus("pkg_public_0.bin");
-        publicKeys[1]=ReadRequiredModulus("pkg_public_1.bin");
-        publicKeys[3]=ReadRequiredModulus("pkg_public_3.bin");
-
-        var fakeModulus=ReadRequiredModulus("fake_keyset_modulus.bin");
-        var headerModulus=publicKeys[3];
+        publicKeys[0]=PkgPublic0;
+        publicKeys[1]=PkgPublic1;
+        publicKeys[3]=PkgPublic3;
 
         var entryKeys=BuildEntryKeys(contentId,passcode,publicKeys);
-        var imageKey=PkgRsa.EncryptKey(fakeModulus,ekpfs);
+        var imageKey=PkgRsa.EncryptKey(FakeModulus,ekpfs);
         var license=DebugRifSigner.Sign(PkgLicense.BuildUnsignedDebugRif(contentId));
-        return new(entryKeys,imageKey,license,digest=>PkgRsa.EncryptKey(headerModulus,digest));
-    }
-
-    private byte[] ReadRequiredModulus(string name)
-    {
-        var path=Path.Combine(_keyRoot,name);
-        if(!File.Exists(path)) throw new InvalidDataException($"Missing keys/{name}.");
-        return ReadModulus(path);
-    }
-
-    private static byte[] ReadModulus(string path)
-    {
-        var data=File.ReadAllBytes(path);
-        if(data.Length!=256) throw new InvalidDataException($"{Path.GetFileName(path)} must be exactly 256 bytes.");
-        return data;
+        return new(entryKeys,imageKey,license,digest=>PkgRsa.EncryptKey(PkgPublic3,digest));
     }
 
     private static byte[] BuildEntryKeys(string contentId,string passcode,IReadOnlyList<byte[]> moduli)
