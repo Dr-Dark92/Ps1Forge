@@ -71,11 +71,9 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Generating keystone...");
         const string packagePasscode = "00000000000000000000000000000000";
-        var keystoneHmacKey = PackageCrypto.ComputeKey(Ps4Metadata.ContentId(analysis.Serial), packagePasscode, 1);
-        var keystoneMacKey = PackageCrypto.ComputeKey(Ps4Metadata.ContentId(analysis.Serial), packagePasscode, 2);
         await File.WriteAllBytesAsync(
             Path.Combine(sceSys, "keystone"),
-            Keystone.Build(packagePasscode, keystoneHmacKey, keystoneMacKey),
+            Keystone.Build(packagePasscode),
             cancellationToken);
 
         progress?.Report("Preparing artwork...");
