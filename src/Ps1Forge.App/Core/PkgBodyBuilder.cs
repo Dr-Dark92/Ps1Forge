@@ -22,11 +22,14 @@ public sealed record PkgBodyLayout(
 public static class PkgBodyBuilder
 {
     public const uint Digests = 0x00000001;
+    public const uint EntryKeys = 0x00000010;
+    public const uint ImageKey = 0x00000020;
     public const uint GeneralDigests = 0x00000080;
     public const uint Metas = 0x00000100;
     public const uint EntryNames = 0x00000200;
     public const uint LicenseDat = 0x00000400;
     public const uint LicenseInfo = 0x00000401;
+    public const uint PsReservedDat = 0x00000409;
     public const uint ParamSfo = 0x00001000;
     public const uint PlayGoChunkDat = 0x00001001;
     public const uint PlayGoChunkSha = 0x00001002;
@@ -40,15 +43,21 @@ public static class PkgBodyBuilder
         IEnumerable<PkgBodyEntry> input,
         ulong outerPfsSize)
     {
-        var entries = input.OrderBy(x => x.Id).ToList();
+        // Preserve construction order for body placement; METAS themselves are
+        // sorted by ID. This mirrors the reference builder.
+        var entries = input.ToList();
         var names = BuildNames(entries);
+        var count = entries.Count;
 
         var cursor = PkgHeader.BodyOffset;
         foreach (var e in entries)
         {
             cursor = Align(cursor, 16);
             e.DataOffset = checked((uint)cursor);
-            cursor += (uint)e.Data.Length;
+            var logicalSize = e.Id is Metas or Digests
+                ? checked((uint)(count * 32))
+                : checked((uint)e.Data.Length);
+            cursor += logicalSize;
         }
 
         var bodySize = Align(cursor, 0x80000) - PkgHeader.BodyOffset;
@@ -61,27 +70,32 @@ public static class PkgBodyBuilder
 
     public static byte[] BuildMetas(IReadOnlyList<PkgBodyEntry> entries)
     {
-        var data = new byte[entries.Count * 32];
-        for (var i = 0; i < entries.Count; i++)
+        var sorted = entries.OrderBy(x => x.Id).ToList();
+        var data = new byte[sorted.Count * 32];
+        for (var i = 0; i < sorted.Count; i++)
         {
-            var e = entries[i];
+            var e = sorted[i];
             var s = data.AsSpan(i * 32, 32);
             BinaryPrimitives.WriteUInt32BigEndian(s[0..4], e.Id);
             BinaryPrimitives.WriteUInt32BigEndian(s[4..8], e.NameOffset);
             BinaryPrimitives.WriteUInt32BigEndian(s[8..12], e.Flags1);
             BinaryPrimitives.WriteUInt32BigEndian(s[12..16], e.Flags2);
             BinaryPrimitives.WriteUInt32BigEndian(s[16..20], e.DataOffset);
-            BinaryPrimitives.WriteUInt32BigEndian(s[20..24], e.DataSize);
+            var logicalSize = e.Id is Metas or Digests
+                ? checked((uint)(entries.Count * 32))
+                : e.DataSize;
+            BinaryPrimitives.WriteUInt32BigEndian(s[20..24], logicalSize);
         }
         return data;
     }
 
     public static byte[] BuildDigests(IReadOnlyList<PkgBodyEntry> entries)
     {
-        var data = new byte[entries.Count * 32];
-        for (var i = 1; i < entries.Count; i++)
+        var sorted = entries.OrderBy(x => x.Id).ToList();
+        var data = new byte[sorted.Count * 32];
+        for (var i = 1; i < sorted.Count; i++)
         {
-            var hash = SHA256.HashData(entries[i].Data);
+            var hash = SHA256.HashData(sorted[i].Data);
             hash.CopyTo(data, i * 32);
         }
         return data;
