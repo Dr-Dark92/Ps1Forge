@@ -199,6 +199,16 @@ public static class InnerPfsWriter
         BinaryPrimitives.WriteInt64LittleEndian(h[0x30..], inodeCount);
         BinaryPrimitives.WriteInt64LittleEndian(h[0x38..], totalBlocks);
         BinaryPrimitives.WriteInt64LittleEndian(h[0x40..], inodeBlocks);
+
+        // Unsigned PFS still embeds a dinodeD32 at 0x50 describing the
+        // inode-table extent. Its first direct block is block 1.
+        var headerInode=h.Slice(0x50,PfsPrimitives.UnsignedInodeSize);
+        BinaryPrimitives.WriteUInt16LittleEndian(headerInode[2..],1);
+        BinaryPrimitives.WriteInt64LittleEndian(headerInode[8..],(long)inodeBlocks*PfsPrimitives.BlockSize);
+        BinaryPrimitives.WriteInt64LittleEndian(headerInode[16..],(long)inodeBlocks*PfsPrimitives.BlockSize);
+        BinaryPrimitives.WriteUInt32LittleEndian(headerInode[96..],checked((uint)inodeBlocks));
+        BinaryPrimitives.WriteInt32LittleEndian(headerInode[100..],1);
+
         BinaryPrimitives.WriteInt32LittleEndian(h[0x368..], 1);
         s.Position = 0;
         s.Write(h);
