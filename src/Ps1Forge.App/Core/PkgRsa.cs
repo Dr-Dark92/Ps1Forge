@@ -78,9 +78,9 @@ public static class PkgRsa
             if(mti>=N)
             {
                 int kk;
-                for(kk=0;kk<N-M;kk++){var y=(mt[kk]&UpperMask)|(mt[kk+1]&LowerMask);mt[kk]=mt[kk+M]^(y>>1)^((y&1)!=0?MatrixA:0);}
-                for(;kk<N-1;kk++){var y=(mt[kk]&UpperMask)|(mt[kk+1]&LowerMask);mt[kk]=mt[kk+M-N]^(y>>1)^((y&1)!=0?MatrixA:0);}
-                {var y=(mt[N-1]&UpperMask)|(mt[0]&LowerMask);mt[N-1]=mt[M-1]^(y>>1)^((y&1)!=0?MatrixA:0);}
+                for(kk=0;kk<N-M;kk++){var twist=(mt[kk]&UpperMask)|(mt[kk+1]&LowerMask);mt[kk]=mt[kk+M]^(twist>>1)^((twist&1)!=0?MatrixA:0);}
+                for(;kk<N-1;kk++){var twist=(mt[kk]&UpperMask)|(mt[kk+1]&LowerMask);mt[kk]=mt[kk+M-N]^(twist>>1)^((twist&1)!=0?MatrixA:0);}
+                {var twist=(mt[N-1]&UpperMask)|(mt[0]&LowerMask);mt[N-1]=mt[M-1]^(twist>>1)^((twist&1)!=0?MatrixA:0);}
                 mti=0;
             }
             var y=mt[mti++];
