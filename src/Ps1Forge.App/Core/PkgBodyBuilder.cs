@@ -8,7 +8,8 @@ public sealed record PkgBodyEntry(uint Id, string Name, byte[] Data, uint Flags1
 {
     public uint NameOffset { get; set; }
     public uint DataOffset { get; set; }
-    public uint DataSize => checked((uint)Data.Length);
+    public uint LogicalSize { get; set; }
+    public uint DataSize => LogicalSize == 0 ? checked((uint)Data.Length) : LogicalSize;
 }
 
 public sealed record PkgBodyLayout(
@@ -54,10 +55,10 @@ public static class PkgBodyBuilder
         {
             cursor = Align(cursor, 16);
             e.DataOffset = checked((uint)cursor);
-            var logicalSize = e.Id is Metas or Digests
+            e.LogicalSize = e.Id is Metas or Digests
                 ? checked((uint)(count * 32))
                 : checked((uint)e.Data.Length);
-            cursor += logicalSize;
+            cursor += e.LogicalSize;
         }
 
         var bodySize = Align(cursor, 0x80000) - PkgHeader.BodyOffset;
@@ -81,10 +82,7 @@ public static class PkgBodyBuilder
             BinaryPrimitives.WriteUInt32BigEndian(s[8..12], e.Flags1);
             BinaryPrimitives.WriteUInt32BigEndian(s[12..16], e.Flags2);
             BinaryPrimitives.WriteUInt32BigEndian(s[16..20], e.DataOffset);
-            var logicalSize = e.Id is Metas or Digests
-                ? checked((uint)(entries.Count * 32))
-                : e.DataSize;
-            BinaryPrimitives.WriteUInt32BigEndian(s[20..24], logicalSize);
+            BinaryPrimitives.WriteUInt32BigEndian(s[20..24], e.DataSize);
         }
         return data;
     }
@@ -109,7 +107,15 @@ public static class PkgBodyBuilder
         foreach (var e in layout.Entries)
         {
             output.Position = e.DataOffset;
-            await output.WriteAsync(e.Data, ct);
+            var data = e.Id switch
+            {
+                Metas => BuildMetas(layout.Entries),
+                Digests => BuildDigests(layout.Entries),
+                _ => e.Data
+            };
+            if (data.Length != e.DataSize)
+                throw new InvalidDataException($"PKG entry 0x{e.Id:X8} planned {e.DataSize} bytes but produced {data.Length}.");
+            await output.WriteAsync(data, ct);
         }
         if ((ulong)output.Length < layout.PfsOffset)
             output.SetLength((long)layout.PfsOffset);
