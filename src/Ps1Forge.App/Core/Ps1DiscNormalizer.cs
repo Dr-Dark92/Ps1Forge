@@ -78,10 +78,14 @@ public static class Ps1DiscNormalizer
                 currentFile = track.FilePath;
             }
 
-            var local = CueTimeToSectors(track.Index01);
-            var absolute = accumulatedSectors + local;
+            var absolute01 = accumulatedSectors + CueTimeToSectors(track.Index01);
             sb.Append($"  TRACK {track.Number:00} {track.Mode}\r\n");
-            sb.Append($"    INDEX 01 {SectorsToCueTime(absolute)}\r\n");
+            if(!string.IsNullOrWhiteSpace(track.Index00))
+            {
+                var absolute00=accumulatedSectors+CueTimeToSectors(track.Index00);
+                sb.Append($"    INDEX 00 {SectorsToCueTime(absolute00)}\r\n");
+            }
+            sb.Append($"    INDEX 01 {SectorsToCueTime(absolute01)}\r\n");
         }
         return sb.ToString();
     }
