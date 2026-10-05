@@ -62,6 +62,19 @@ public static partial class CueParser
         if (tracks.Count == 0)
             throw new InvalidDataException("No tracks were found in the CUE file.");
 
+        foreach(var track in tracks)
+        {
+            if(string.IsNullOrWhiteSpace(track.Index01))
+                throw new InvalidDataException($"CUE track {track.Number:00} is missing INDEX 01.");
+            ValidateCueTime(track.Index01,$"track {track.Number:00} INDEX 01");
+            if(!string.IsNullOrWhiteSpace(track.Index00))
+            {
+                ValidateCueTime(track.Index00,$"track {track.Number:00} INDEX 00");
+                if(CueTimeToFrames(track.Index00)>CueTimeToFrames(track.Index01))
+                    throw new InvalidDataException($"CUE track {track.Number:00} INDEX 00 occurs after INDEX 01.");
+            }
+        }
+
         var missing = tracks
             .Select(t => t.FilePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -71,6 +84,27 @@ public static partial class CueParser
         if (missing.Length > 0)
             throw new FileNotFoundException("CUE references missing track file(s): " + string.Join(", ", missing));
 
+        foreach(var path in tracks.Select(t=>t.FilePath).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var length=new FileInfo(path).Length;
+            if(length==0 || length%2352!=0)
+                throw new InvalidDataException($"CUE track file is not a non-empty raw 2352-byte-sector image: {path}");
+        }
+
         return tracks;
+    }
+
+    private static void ValidateCueTime(string value,string label)
+    {
+        var p=value.Split(':');
+        if(p.Length!=3 || !int.TryParse(p[0],out var m) || !int.TryParse(p[1],out var s) || !int.TryParse(p[2],out var f)
+            || m<0 || s is <0 or >=60 || f is <0 or >=75)
+            throw new InvalidDataException($"Invalid CUE time for {label}: {value}");
+    }
+
+    private static long CueTimeToFrames(string value)
+    {
+        var p=value.Split(':');
+        return ((long)int.Parse(p[0])*60+int.Parse(p[1]))*75+int.Parse(p[2]);
     }
 }
