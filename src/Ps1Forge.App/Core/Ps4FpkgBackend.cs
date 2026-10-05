@@ -56,7 +56,7 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         if (analysis.Tracks.Count > 0)
         {
             progress?.Report("Generating PS1 TOC...");
-            var toc = Ps1TocWriter.Build(analysis.Tracks, new FileInfo(normalized.BinPath).Length);
+            var toc = Ps1TocWriter.Build(normalized.Tracks, new FileInfo(normalized.BinPath).Length);
             await File.WriteAllBytesAsync(Path.Combine(data, "disc1.toc"), toc, cancellationToken);
         }
 
