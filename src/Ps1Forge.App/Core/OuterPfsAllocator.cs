@@ -10,76 +10,75 @@ public sealed record OuterPfsFileLayout(
 
 public static class OuterPfsAllocator
 {
-    public const int BlockSize = 0x10000;
-    public const int SignedInodeSize = 0x2C8;
-    public const int SignatureRecordSize = 36;
-    public const int DirectCount = 12;
+    public const int BlockSize=0x10000;
+    public const int SignatureRecordSize=36;
+    public const int DirectCount=12;
 
     public static OuterPfsFileLayout AllocateLargeFile(
-        long fileSize,
-        long inodeOffset,
-        ref long nextIndirectBlock,
-        ref long nextDataBlock)
+        long fileSize,long inodeOffset,ref long nextBlock)
     {
         var blocks=Math.Max(1,CeilDiv(fileSize,BlockSize));
         var perIndirect=BlockSize/SignatureRecordSize;
+        var remaining=blocks-Math.Min(blocks,DirectCount);
+
         var inodeIndirect=new List<long>();
         var allIndirect=new List<long>();
-        var dataSigs=new List<(long,long,int)>();
-        var finalSigs=new List<(long,long,int)>();
+        long level1=-1,level2Root=-1;
+        var leaves=new List<long>();
 
-        var direct=Math.Min(blocks,DirectCount);
-        var dataStart=nextDataBlock;
-        for(long i=0;i<direct;i++)
-        {
-            dataSigs.Add((nextDataBlock,inodeOffset+SignedInodeDirectOffset((int)i),BlockSize));
-            nextDataBlock++;
-        }
-
-        var remaining=blocks-direct;
+        // Reserve the complete signature tree before allocating file data.
         if(remaining>0)
         {
-            var level1=nextIndirectBlock++;
-            inodeIndirect.Add(level1);
-            allIndirect.Add(level1);
-            finalSigs.Add((level1,inodeOffset+SignedInodeIndirectOffset(0),BlockSize));
-
-            var first=Math.Min(remaining,perIndirect);
-            for(long i=0;i<first;i++)
-            {
-                dataSigs.Add((nextDataBlock,level1*BlockSize+i*SignatureRecordSize,BlockSize));
-                nextDataBlock++;
-            }
-            remaining-=first;
+            level1=nextBlock++;
+            inodeIndirect.Add(level1); allIndirect.Add(level1);
+            remaining-=Math.Min(remaining,perIndirect);
 
             if(remaining>0)
             {
-                var level2Root=nextIndirectBlock++;
-                inodeIndirect.Add(level2Root);
-                allIndirect.Add(level2Root);
-                finalSigs.Add((level2Root,inodeOffset+SignedInodeIndirectOffset(1),BlockSize));
-
-                long rootSlot=0;
-                while(remaining>0)
-                {
-                    if(rootSlot>=perIndirect)
-                        throw new NotSupportedException("Outer PFS file exceeds two-level signature capacity.");
-
-                    var leaf=nextIndirectBlock++;
-                    allIndirect.Add(leaf);
-                    finalSigs.Add((leaf,level2Root*BlockSize+rootSlot*SignatureRecordSize,BlockSize));
-                    rootSlot++;
-
-                    var count=Math.Min(remaining,perIndirect);
-                    for(long j=0;j<count;j++)
-                    {
-                        dataSigs.Add((nextDataBlock,leaf*BlockSize+j*SignatureRecordSize,BlockSize));
-                        nextDataBlock++;
-                    }
-                    remaining-=count;
-                }
+                level2Root=nextBlock++;
+                inodeIndirect.Add(level2Root); allIndirect.Add(level2Root);
+                var leafCount=CeilDiv(remaining,perIndirect);
+                if(leafCount>perIndirect)
+                    throw new NotSupportedException("Outer PFS file exceeds two-level signature capacity.");
+                for(long i=0;i<leafCount;i++){var leaf=nextBlock++; leaves.Add(leaf); allIndirect.Add(leaf);}
             }
         }
+
+        var dataStart=nextBlock;
+        nextBlock+=blocks;
+
+        var dataSigs=new List<(long,long,int)>();
+        var finalSigs=new List<(long,long,int)>();
+        var dataIndex=0L;
+        for(;dataIndex<Math.Min(blocks,DirectCount);dataIndex++)
+            dataSigs.Add((dataStart+dataIndex,inodeOffset+SignedInodeDirectOffset((int)dataIndex),BlockSize));
+
+        remaining=blocks-dataIndex;
+        if(level1>=0)
+        {
+            finalSigs.Add((level1,inodeOffset+SignedInodeIndirectOffset(0),BlockSize));
+            var count=Math.Min(remaining,perIndirect);
+            for(long i=0;i<count;i++,dataIndex++)
+                dataSigs.Add((dataStart+dataIndex,level1*BlockSize+i*SignatureRecordSize,BlockSize));
+            remaining-=count;
+        }
+
+        if(level2Root>=0)
+        {
+            finalSigs.Add((level2Root,inodeOffset+SignedInodeIndirectOffset(1),BlockSize));
+            for(var li=0;li<leaves.Count;li++)
+            {
+                var leaf=leaves[li];
+                finalSigs.Add((leaf,level2Root*BlockSize+(long)li*SignatureRecordSize,BlockSize));
+                var count=Math.Min(remaining,perIndirect);
+                for(long j=0;j<count;j++,dataIndex++)
+                    dataSigs.Add((dataStart+dataIndex,leaf*BlockSize+j*SignatureRecordSize,BlockSize));
+                remaining-=count;
+            }
+        }
+
+        if(remaining!=0 || dataIndex!=blocks)
+            throw new InvalidDataException("Outer PFS allocation did not account for every file block.");
 
         return new(dataStart,blocks,inodeIndirect,allIndirect,dataSigs,finalSigs);
     }
