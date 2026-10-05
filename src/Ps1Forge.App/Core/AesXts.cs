@@ -42,6 +42,28 @@ public static class AesXts
         }
     }
 
+    public static void EncryptSectorInPlace(byte[] sector,byte[] dataKey,byte[] tweakKey,ulong sectorNumber)
+    {
+        if((sector.Length&15)!=0) throw new InvalidDataException("XTS sector data must be AES-block aligned.");
+        using var dataAes=CreateEcb(dataKey);
+        using var tweakAes=CreateEcb(tweakKey);
+        using var dataEnc=dataAes.CreateEncryptor();
+        using var tweakEnc=tweakAes.CreateEncryptor();
+        var tweakInput=new byte[16];
+        BinaryPrimitives.WriteUInt64LittleEndian(tweakInput,sectorNumber);
+        var tweak=new byte[16];
+        tweakEnc.TransformBlock(tweakInput,0,16,tweak,0);
+        var block=new byte[16];
+        var encrypted=new byte[16];
+        for(var off=0;off<sector.Length;off+=16)
+        {
+            for(var i=0;i<16;i++) block[i]=(byte)(sector[off+i]^tweak[i]);
+            dataEnc.TransformBlock(block,0,16,encrypted,0);
+            for(var i=0;i<16;i++) sector[off+i]=(byte)(encrypted[i]^tweak[i]);
+            MultiplyAlpha(tweak);
+        }
+    }
+
     private static Aes CreateEcb(byte[] key)
     {
         var aes = Aes.Create();
