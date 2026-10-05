@@ -34,6 +34,7 @@ public static class PkgValidator
         if(pfsSize==0) errors.Add("PFS payload is empty.");
         var entries=await ValidateEntriesAsync(fs,count,table,body,bodySize,errors,ct);
         await ValidateEntryDigestsAsync(fs,h,entries,errors,ct);
+        await ValidateScDigestsAsync(fs,h,entries,errors,ct);
         if(pfsSize>0&&pfs+pfsSize<=(ulong)fs.Length)
         {
             var full=await HashRangeAsync(fs,(long)pfs,(long)pfsSize,ct);
@@ -96,6 +97,42 @@ public static class PkgValidator
         }
         var tableHash=SHA256.HashData(table);
         if(!tableHash.AsSpan().SequenceEqual(header.AsSpan(0x140,32))) errors.Add("DIGESTS table SHA-256 mismatch.");
+    }
+
+    private static async Task ValidateScDigestsAsync(FileStream fs,byte[] header,List<ParsedEntry> entries,List<string> errors,CancellationToken ct)
+    {
+        var sc1Ids=new[]{PkgBodyBuilder.EntryKeys,PkgBodyBuilder.ImageKey,PkgBodyBuilder.GeneralDigests,PkgBodyBuilder.Metas,PkgBodyBuilder.Digests};
+        var sc2Ids=new[]{PkgBodyBuilder.EntryKeys,PkgBodyBuilder.ImageKey,PkgBodyBuilder.GeneralDigests,PkgBodyBuilder.Metas};
+
+        var sc1=await ConcatEntryDataAsync(fs,entries,sc1Ids,false,ct);
+        if(sc1 is not null)
+        {
+            var hash=SHA256.HashData(sc1);
+            if(!hash.AsSpan().SequenceEqual(header.AsSpan(0x100,32))) errors.Add("SC1 SHA-256 mismatch.");
+        }
+
+        var sc2=await ConcatEntryDataAsync(fs,entries,sc2Ids,true,ct);
+        if(sc2 is not null)
+        {
+            var hash=SHA256.HashData(sc2);
+            if(!hash.AsSpan().SequenceEqual(header.AsSpan(0x120,32))) errors.Add("SC2 SHA-256 mismatch.");
+        }
+    }
+
+    private static async Task<byte[]?> ConcatEntryDataAsync(FileStream fs,List<ParsedEntry> entries,uint[] ids,bool sc2MetasSize,CancellationToken ct)
+    {
+        using var output=new MemoryStream();
+        foreach(var id in ids)
+        {
+            var e=entries.FirstOrDefault(x=>x.Id==id);
+            if(e is null) return null;
+            var size=e.DataSize;
+            if(sc2MetasSize&&id==PkgBodyBuilder.Metas)
+                size=Math.Min(size,6u*0x20u);
+            var data=await ReadRangeAsync(fs,e.DataOffset,checked((int)size),ct);
+            await output.WriteAsync(data,ct);
+        }
+        return output.ToArray();
     }
 
     private static async Task<byte[]> ReadRangeAsync(FileStream fs,long offset,int length,CancellationToken ct)
