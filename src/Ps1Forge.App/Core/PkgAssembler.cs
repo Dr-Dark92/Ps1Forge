@@ -8,6 +8,7 @@ public static class PkgAssembler
         string contentId,
         string passcode,
         IReadOnlyList<PkgBodyEntry> entries,
+        byte[] paramSfo,
         CancellationToken ct=default)
     {
         var pfsInfo=new FileInfo(outerPfsPath);
@@ -34,7 +35,7 @@ public static class PkgAssembler
                 throw new InvalidDataException($"PKG size mismatch after assembly: {pkg.Length} != {layout.PackageSize}.");
 
             await pkg.FlushAsync(ct);
-            await PkgFinalizer.ApplyCoreDigestsAsync(pkg,layout,ct);
+            await PkgFinalizer.ApplyCoreDigestsAsync(pkg,layout,ct,contentId,paramSfo);
             await PkgFinalizer.ApplyHeaderDigestAsync(pkg,ct);
             await pkg.FlushAsync(ct);
         }
