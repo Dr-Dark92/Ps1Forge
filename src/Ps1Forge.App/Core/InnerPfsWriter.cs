@@ -82,6 +82,12 @@ public static class InnerPfsWriter
             block += checked((int)f.Blocks);
         }
 
+        // PS4 unsigned app0 PFS images use a minimum geometry of 0x55 blocks.
+        // Keep small titles at that floor so the header block count, PlayGo inner
+        // PFS size and the filesystem image all describe the same geometry.
+        const int MinimumInnerPfsBlocks = 0x55;
+        block = Math.Max(block, MinimumInnerPfsBlocks);
+
         await using var output = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1024 * 1024, true);
         output.SetLength((long)block * PfsPrimitives.BlockSize);
 
