@@ -23,6 +23,8 @@ public static class PkgValidator
         if(fs.Length<0x2000){errors.Add("File is smaller than minimum PKG layout.");return new(false,errors);}
         var h=new byte[PkgHeader.HeaderSize]; await ReadExactAsync(fs,h,ct);
         errors.AddRange(ValidateHeader(h).Errors);
+        var headerDigest=SHA256.HashData(h.AsSpan(0,0xFE0));
+        if(!headerDigest.AsSpan().SequenceEqual(h.AsSpan(0xFE0,32))) errors.Add("Final PKG header SHA-256 mismatch.");
         var count=BE32(h,0x10); var table=BE32(h,0x18);
         var body=BE64(h,0x20); var bodySize=BE64(h,0x28);
         var pfs=BE64(h,0x410); var pfsSize=BE64(h,0x418); var size=BE64(h,0x430);
