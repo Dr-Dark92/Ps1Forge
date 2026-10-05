@@ -151,13 +151,22 @@ public static class InnerPfsWriter
 
     private static byte[] BuildFlatTable(IEnumerable<Node> nodes)
     {
-        var entries = nodes.Select(n => (Hash: PfsPrimitives.PathHash(n.FullPath), Value: n.Inode | (n.IsDir ? 0x20000000u : 0u)))
-            .OrderBy(x => x.Hash).ToArray();
-        var data = new byte[entries.Length * 8];
+        var byHash=new Dictionary<uint,string>();
+        var entries=new List<(uint Hash,uint Value)>();
+        foreach(var n in nodes)
+        {
+            var hash=PfsPrimitives.PathHash(n.FullPath);
+            if(byHash.TryGetValue(hash,out var existing))
+                throw new InvalidDataException($"PFS path-hash collision: {n.FullPath} and {existing}");
+            byHash.Add(hash,n.FullPath);
+            entries.Add((hash,n.Inode | (n.IsDir ? 0x20000000u : 0u)));
+        }
+        var ordered=entries.OrderBy(x=>x.Hash).ToArray();
+        var data = new byte[ordered.Length * 8];
         for (var i = 0; i < entries.Length; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8, 4), entries[i].Hash);
-            BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8 + 4, 4), entries[i].Value);
+            BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8, 4), ordered[i].Hash);
+            BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8 + 4, 4), ordered[i].Value);
         }
         return data;
     }
