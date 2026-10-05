@@ -2,7 +2,7 @@ namespace Ps1Forge.Core;
 
 /// <summary>
 /// PS4 fPKG backend boundary. Runtime validation and PS1HD configuration are
-/// implemented here; native PFS/PFSC/PKG serialization is the remaining stage.
+/// and native PFS/PFSC/PKG serialization are implemented here.
 /// Sony runtime binaries are never embedded in Ps1Forge.
 /// </summary>
 public sealed class Ps4FpkgBackend : IPackageBackend
@@ -86,6 +86,16 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         {
             var source = Path.Combine(_runtimeRoot, relative.Replace('/', Path.DirectorySeparatorChar));
             var target = Path.Combine(app0, relative.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(source, target, true);
+        }
+
+        var biosSource = Path.Combine(_runtimeRoot, "bios");
+        var biosTarget = Path.Combine(app0, "bios");
+        foreach (var source in Directory.EnumerateFiles(biosSource, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(biosSource, source);
+            var target = Path.Combine(biosTarget, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(source, target, true);
         }
