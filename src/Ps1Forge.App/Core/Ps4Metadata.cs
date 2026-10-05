@@ -30,9 +30,19 @@ public static class Ps4Metadata
 
         var sfo = new SfoWriter();
         sfo.AddInt32("APP_TYPE", 1);
+        sfo.AddString("APP_VER", "01.00", 8);
+        sfo.AddInt32("ATTRIBUTE", 0);
+        sfo.AddInt32("ATTRIBUTE2", 0x400);
         sfo.AddString("CATEGORY", "gd", 4);
         sfo.AddString("CONTENT_ID", contentId, 48);
+        sfo.AddInt32("DEV_FLAG", 0);
+        sfo.AddInt32("DOWNLOAD_DATA_SIZE", 0);
         sfo.AddString("FORMAT", "obs", 4);
+        sfo.AddInt32("PARENTAL_LEVEL", 5);
+        sfo.AddString("PUBTOOLINFO", "c_date=20261005,sdk_ver=05050000,st_type=digital50,img0_l0_size=0,img0_l1_size=0,img0_sc_ksize=512,img0_pc_ksize=576", 512);
+        sfo.AddInt32("PUBTOOLMINVER", 0x02990000);
+        sfo.AddInt32("PUBTOOLVER", 0x03380000);
+        sfo.AddInt32("SYSTEM_VER", 0x05050000);
         sfo.AddString("TITLE", title, 128);
         sfo.AddString("TITLE_ID", titleId, 12);
         sfo.AddString("VERSION", "01.00", 8);
