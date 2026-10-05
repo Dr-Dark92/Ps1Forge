@@ -46,6 +46,11 @@ public static class Ps1DiscNormalizer
             return new NormalizedDisc(outBin, outCue, analysis.Tracks.Count);
         }
 
+        var extension = Path.GetExtension(analysis.SelectedPath).ToLowerInvariant();
+        if (extension is ".iso" or ".img")
+            throw new NotSupportedException(
+                "ISO/IMG normalization is not enabled yet because sector layout must be verified. Use a CUE/BIN dump for the first Ps1Forge builds.");
+
         progress?.Report("Copying disc image...");
         await CopyAsync(analysis.SelectedPath, outBin, cancellationToken);
         await File.WriteAllTextAsync(
