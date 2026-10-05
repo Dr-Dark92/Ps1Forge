@@ -22,6 +22,12 @@ public static class Ps1TocWriter
             var entry = new byte[10];
             entry[0] = i == 0 ? (byte)0x41 : (byte)0x01;
             entry[2] = Bcd(i + 1);
+            if(i>0 && !string.IsNullOrWhiteSpace(tracks[i].Index00))
+            {
+                var pregap=CueTimeToLba(tracks[i].Index00)+150;
+                var (pm,ps,pf)=MsfAlt(pregap);
+                entry[3]=Bcd(pm); entry[4]=Bcd(ps); entry[5]=Bcd(pf);
+            }
 
             var lba = CueTimeToLba(tracks[i].Index01) + 150;
             if (i == 0) lba = 150;
