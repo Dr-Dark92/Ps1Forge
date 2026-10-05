@@ -47,6 +47,7 @@ public static class PkgBodyBuilder
         // Preserve construction order for body placement; METAS themselves are
         // sorted by ID. This mirrors the reference builder.
         var entries = input.ToList();
+        StabilizePlayGoShaSize(entries, outerPfsSize);
         var names = BuildNames(entries);
         var count = entries.Count;
 
@@ -127,6 +128,29 @@ public static class PkgBodyBuilder
         }
         if ((ulong)output.Length < layout.PfsOffset)
             output.SetLength((long)layout.PfsOffset);
+    }
+
+    private static void StabilizePlayGoShaSize(List<PkgBodyEntry> entries,ulong outerPfsSize)
+    {
+        var chunkSha=entries.FirstOrDefault(e=>e.Id==PlayGoChunkSha);
+        if(chunkSha is null) return;
+        for(var iteration=0;iteration<16;iteration++)
+        {
+            ulong cursor=PkgHeader.BodyOffset;
+            foreach(var e in entries)
+            {
+                var size=e.Id is Metas or Digests
+                    ? checked((uint)(entries.Count*32))
+                    : checked((uint)e.Data.Length);
+                cursor+=Align(size,16);
+            }
+            var bodySize=Align(cursor,0x80000)-PkgHeader.BodyOffset;
+            var packageSize=PkgHeader.BodyOffset+bodySize+outerPfsSize;
+            var next=checked((int)((packageSize/0x10000)*4));
+            if(chunkSha.Data.Length==next) return;
+            chunkSha.Data=new byte[next];
+        }
+        throw new InvalidDataException("PlayGo chunk SHA size did not stabilize.");
     }
 
     private static byte[] BuildNames(IEnumerable<PkgBodyEntry> entries)
