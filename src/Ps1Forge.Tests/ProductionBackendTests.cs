@@ -30,6 +30,10 @@ public sealed class ProductionBackendTests
                 await File.WriteAllBytesAsync(p,Enumerable.Range(0,4096).Select(i=>(byte)(i*19+relative.Length)).ToArray());
             }
 
+            var bios=Path.Combine(runtime,"bios");
+            Directory.CreateDirectory(bios);
+            await File.WriteAllBytesAsync(Path.Combine(bios,"test.bin"),new byte[4096]);
+
             var bin=Path.Combine(root,"game.bin");
             await File.WriteAllBytesAsync(bin,new byte[2352*400]);
             var cue=Path.Combine(root,"game.cue");
