@@ -21,10 +21,11 @@ public static class OuterPfsWriter
         const int inodeCount=4;
         const int inodeBlockCount=1;
         const long inodeBlock=1, superRootBlock=2, flatBlock=3;
-        // Reference layout advances once after the flat table, then marks the
-        // following zero block as the intentional XTS plaintext exception.
-        const long postFlatPaddingBlock=4, emptyBlock=5;
-        var nextBlock=6L;
+        // Reference layout advances past the flat-path-table block and leaves
+        // that next block as the intentional XTS plaintext exception.
+        // Header=0, inode table=1, super-root=2, flat table=3, empty=4.
+        const long emptyBlock=4;
+        var nextBlock=5L;
 
         // pfs_image inode is #3, at block 1 + 3*0x2c8.
         var fileInodeOffset=inodeBlock*BlockSize+3L*SignedPfsPrimitives.SignedInode32Size;
@@ -35,7 +36,7 @@ public static class OuterPfsWriter
         var urootBlock=layout.DataStartBlock-1;
         if(urootBlock<urootBlockPlaceholder)
             throw new InvalidDataException("Outer PFS uroot allocation underflow.");
-        if(postFlatPaddingBlock+1!=emptyBlock || nextBlock<=emptyBlock)
+        if(nextBlock<=emptyBlock)
             throw new InvalidDataException("Outer PFS reserved-block layout is inconsistent.");
         var totalBlocks=nextBlock;
         await using var fs=new FileStream(outputPath,FileMode.Create,FileAccess.ReadWrite,FileShare.None,1024*1024,FileOptions.Asynchronous);
