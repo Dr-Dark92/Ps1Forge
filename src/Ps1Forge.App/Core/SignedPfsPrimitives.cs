@@ -15,6 +15,31 @@ public static class SignedPfsPrimitives
     public static byte[] SignBlock(byte[] signingKey, ReadOnlySpan<byte> block) =>
         PackageCrypto.HmacSha256(signingKey, block);
 
+    public static byte[] BuildSignedInode64(
+        ushort mode,ushort nlink,uint flags,long size,uint blocks,
+        IReadOnlyList<SignedBlockRef> direct)
+    {
+        if(direct.Count>DirectCount) throw new ArgumentOutOfRangeException(nameof(direct));
+        var d=new byte[SignedInode64Size];
+        BinaryPrimitives.WriteUInt16LittleEndian(d.AsSpan(0,2),mode);
+        BinaryPrimitives.WriteUInt16LittleEndian(d.AsSpan(2,2),nlink);
+        BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(4,4),flags);
+        BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(8,8),size);
+        BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(16,8),size);
+        BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(96,4),blocks);
+        var offset=104;
+        for(var i=0;i<DirectCount;i++,offset+=40)
+        {
+            var span=d.AsSpan(offset,40); span.Clear();
+            if(i>=direct.Count) continue;
+            var value=direct[i];
+            if(value.Signature.Length!=32) throw new ArgumentException("PFS block signature must be 32 bytes.");
+            value.Signature.CopyTo(span[..32]);
+            BinaryPrimitives.WriteInt64LittleEndian(span[32..40],value.Block);
+        }
+        return d;
+    }
+
     public static byte[] BuildSignedInode32(
         ushort mode,
         ushort nlink,
