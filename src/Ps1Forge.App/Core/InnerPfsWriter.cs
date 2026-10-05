@@ -81,9 +81,9 @@ public static class InnerPfsWriter
         WriteHeader(output, inodeCount, inodeBlocks, block);
         output.Position = PfsPrimitives.BlockSize;
 
-        WriteInode(output, ModeDir | ReadExec, 1, FlagInternal | FlagReadonly, PfsPrimitives.BlockSize, 1, superRoot.StartBlock, 1);
-        WriteInode(output, ModeFile | ReadExec, 1, FlagInternal | FlagReadonly, flat.Size, flat.Blocks, flat.StartBlock, 1);
-        WriteInode(output, ModeDir | ReadExec, DirLinks(root), FlagReadonly, PfsPrimitives.BlockSize, 1, root.StartBlock, 1);
+        WriteInode(output, (ushort)(ModeDir | ReadExec), 1, FlagInternal | FlagReadonly, PfsPrimitives.BlockSize, 1, superRoot.StartBlock, 1);
+        WriteInode(output, (ushort)(ModeFile | ReadExec), 1, FlagInternal | FlagReadonly, flat.Size, flat.Blocks, flat.StartBlock, 1);
+        WriteInode(output, (ushort)(ModeDir | ReadExec), DirLinks(root), FlagReadonly, PfsPrimitives.BlockSize, 1, root.StartBlock, 1);
         foreach (var n in nodes)
             WriteInode(output,
                 (ushort)((n.IsDir ? ModeDir : ModeFile) | ReadExec),
