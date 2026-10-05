@@ -34,9 +34,9 @@ public static class SignedPfsPrimitives
         BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(4,4), flags);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(8,8), size);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(16,8), size);
-        BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(88,4), blocks);
+        BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(96,4), blocks);
 
-        var offset = 92;
+        var offset = 100;
         for (var i=0;i<DirectCount;i++,offset+=BlockRef32Size)
             WriteRef(d.AsSpan(offset,BlockRef32Size), i<direct.Count ? direct[i] : null);
         for (var i=0;i<IndirectCount;i++,offset+=BlockRef32Size)
