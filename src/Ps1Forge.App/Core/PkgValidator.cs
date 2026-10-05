@@ -12,7 +12,20 @@ public static class PkgValidator
         var errors=new List<string>();
         if(pkg.Length<PkgHeader.HeaderSize){errors.Add("PKG header is truncated.");return new(false,errors);}
         if(pkg[0]!=0x7F||pkg[1]!=(byte)'C'||pkg[2]!=(byte)'N'||pkg[3]!=(byte)'T') errors.Add("Invalid PKG magic.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x04,4))!=0x40000001) errors.Add("Unexpected PKG flags.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x0C,4))!=0xF) errors.Add("Unexpected PKG header type.");
         if(BinaryPrimitives.ReadUInt64BigEndian(pkg.Slice(0x20,8))!=PkgHeader.BodyOffset) errors.Add("Unexpected body offset.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x70,4))!=0xF) errors.Add("Unexpected DRM type.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x74,4))!=0x1A) errors.Add("Unexpected content type.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x78,4))!=0x0A000000) errors.Add("Unexpected content flags.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x80,4))!=0x20171106) errors.Add("Unexpected PKG version date.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x84,4))!=0x01889410) errors.Add("Unexpected PKG version hash.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x9C,4))!=1) errors.Add("Unexpected EKC version.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x400,4))!=1) errors.Add("Unexpected PFS header marker.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x404,4))!=1) errors.Add("Unexpected PFS image count.");
+        if(BinaryPrimitives.ReadUInt64BigEndian(pkg.Slice(0x408,8))!=0x80000000000003CCUL) errors.Add("Unexpected PFS flags.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x438,4))!=0x10000) errors.Add("Unexpected signed PFS size.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x43C,4))!=0xE0000) errors.Add("Unexpected PFS cache size.");
         return new(errors.Count==0,errors);
     }
 
