@@ -8,10 +8,12 @@ namespace Ps1Forge.Core;
 public sealed class Ps4FpkgBackend : IPackageBackend
 {
     private readonly string _runtimeRoot;
+    private readonly IPkgCryptoProvider _crypto;
 
-    public Ps4FpkgBackend(string runtimeRoot)
+    public Ps4FpkgBackend(string runtimeRoot,IPkgCryptoProvider? crypto=null)
     {
         _runtimeRoot = runtimeRoot;
+        _crypto = crypto ?? new MissingPkgCryptoProvider();
     }
 
     public string Name => "PS4 fPKG";
@@ -114,9 +116,21 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report($"Outer PFS complete ({outerSize:N0} bytes).");
 
-        // Do not silently emit a fake .pkg. The next stage is final PKG
-        // metadata/RIF/entry-table assembly around this validated PFS payload.
-        throw new NotSupportedException(
-            "Signed/encrypted outer PFS is complete. Final PKG serialization is not implemented yet.");
+        progress?.Report("Preparing final PKG entries...");
+        var crypto=_crypto.Prepare(contentId,packagePasscode,ekpfs);
+        var iconPath=Path.Combine(sceSys,"icon0.png");
+        var icon0=await File.ReadAllBytesAsync(iconPath,cancellationToken);
+        var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto);
+
+        progress?.Report("Assembling PS4 package...");
+        Directory.CreateDirectory(outputDirectory);
+        var outputPath=Path.Combine(outputDirectory,$"{Ps4Metadata.NormalizeTitleId(analysis.Serial)}.pkg");
+        var validation=await PkgAssembler.AssembleAsync(
+            outputPath,outerPfs,contentId,packagePasscode,entries,paramSfo,crypto.HeaderWrapper,cancellationToken);
+        if(!validation.Valid)
+            throw new InvalidDataException("Generated PKG failed validation: "+string.Join("; ",validation.Errors));
+
+        progress?.Report("PKG validation passed.");
+        return outputPath;
     }
 }
