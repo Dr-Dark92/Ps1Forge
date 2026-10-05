@@ -9,6 +9,7 @@ public static class PkgAssembler
         string passcode,
         IReadOnlyList<PkgBodyEntry> entries,
         byte[] paramSfo,
+        Func<byte[],byte[]> headerWrapper,
         CancellationToken ct=default)
     {
         var pfsInfo=new FileInfo(outerPfsPath);
@@ -38,6 +39,7 @@ public static class PkgAssembler
             await PlayGoShaWriter.ApplyAsync(pkg,layout,ct);
             await PkgFinalizer.ApplyCoreDigestsAsync(pkg,layout,ct,contentId,paramSfo);
             await PkgFinalizer.ApplyHeaderDigestAsync(pkg,ct);
+            await PkgFinalizer.ApplyHeaderWrapperAsync(pkg,headerWrapper,ct);
             await pkg.FlushAsync(ct);
         }
 
