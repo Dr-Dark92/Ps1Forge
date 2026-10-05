@@ -102,6 +102,8 @@ public static class PkgBodyBuilder
     public static async Task WriteBodyAsync(
         FileStream output,
         PkgBodyLayout layout,
+        string contentId,
+        string passcode,
         CancellationToken ct)
     {
         foreach (var e in layout.Entries)
@@ -115,6 +117,8 @@ public static class PkgBodyBuilder
             };
             if (data.Length != e.DataSize)
                 throw new InvalidDataException($"PKG entry 0x{e.Id:X8} planned {e.DataSize} bytes but produced {data.Length}.");
+            if ((e.Flags1 & 0x80000000u) != 0)
+                data = PkgEntryCrypto.Encrypt(e.Id, e.NameOffset, e.Flags1, e.Flags2, e.DataOffset, data, contentId, passcode);
             await output.WriteAsync(data, ct);
         }
         if ((ulong)output.Length < layout.PfsOffset)
