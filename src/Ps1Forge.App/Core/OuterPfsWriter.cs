@@ -59,7 +59,7 @@ public static class OuterPfsWriter
         WriteInode(fs,superInodeOff,(ushort)(Dir|Rx),1,Internal|Unk2|Unk3,BlockSize,1,superRootBlock,null);
         WriteInode(fs,flatInodeOff,(ushort)(File|Rx),1,Internal|Unk2|Unk3,8,1,flatBlock,null);
         WriteInode(fs,rootInodeOff,(ushort)(Dir|Rx),2,Unk2|Unk3,BlockSize,1,urootBlock,null);
-        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.IndirectBlocks,logicalInnerPfsSize);
+        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.InodeIndirectBlocks,logicalInnerPfsSize);
 
         fs.Position=superRootBlock*BlockSize;
         PfsPrimitives.WriteDirent(fs,1,2,"flat_path_table");
