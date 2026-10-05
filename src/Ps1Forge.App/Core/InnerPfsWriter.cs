@@ -163,7 +163,7 @@ public static class InnerPfsWriter
         }
         var ordered=entries.OrderBy(x=>x.Hash).ToArray();
         var data = new byte[ordered.Length * 8];
-        for (var i = 0; i < entries.Length; i++)
+        for (var i = 0; i < ordered.Length; i++)
         {
             BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8, 4), ordered[i].Hash);
             BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(i * 8 + 4, 4), ordered[i].Value);
