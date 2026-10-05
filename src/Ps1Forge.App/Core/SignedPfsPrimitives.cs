@@ -17,7 +17,7 @@ public static class SignedPfsPrimitives
 
     public static byte[] BuildSignedInode64(
         ushort mode,ushort nlink,uint flags,long size,uint blocks,
-        IReadOnlyList<SignedBlockRef> direct)
+        IReadOnlyList<SignedBlockRef> direct,long timestamp=0)
     {
         if(direct.Count>DirectCount) throw new ArgumentOutOfRangeException(nameof(direct));
         var d=new byte[SignedInode64Size];
@@ -26,6 +26,7 @@ public static class SignedPfsPrimitives
         BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(4,4),flags);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(8,8),size);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(16,8),size);
+        for(var i=0;i<4;i++) BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(24+i*8,8),timestamp);
         BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(96,4),blocks);
         var offset=104;
         for(var i=0;i<DirectCount;i++,offset+=40)
@@ -47,7 +48,8 @@ public static class SignedPfsPrimitives
         long size,
         uint blocks,
         IReadOnlyList<SignedBlockRef> direct,
-        IReadOnlyList<SignedBlockRef>? indirect = null)
+        IReadOnlyList<SignedBlockRef>? indirect = null,
+        long timestamp = 0)
     {
         if (direct.Count > DirectCount) throw new ArgumentOutOfRangeException(nameof(direct));
         indirect ??= Array.Empty<SignedBlockRef>();
@@ -59,6 +61,7 @@ public static class SignedPfsPrimitives
         BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(4,4), flags);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(8,8), size);
         BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(16,8), size);
+        for(var i=0;i<4;i++) BinaryPrimitives.WriteInt64LittleEndian(d.AsSpan(24+i*8,8),timestamp);
         BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(96,4), blocks);
 
         var offset = 100;
