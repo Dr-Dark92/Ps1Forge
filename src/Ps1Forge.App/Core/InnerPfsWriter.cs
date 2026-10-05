@@ -239,9 +239,14 @@ public static class InnerPfsWriter
         BinaryPrimitives.WriteInt64LittleEndian(d[16..], size);
         for (var i = 0; i < 4; i++) BinaryPrimitives.WriteInt64LittleEndian(d[(24 + i * 8)..], timestamp);
         BinaryPrimitives.WriteUInt32LittleEndian(d[96..], blocks);
-        if(blocks>12) throw new InvalidDataException("Unsigned PFS inode requires unsupported indirect blocks.");
-        for(var i=0;i<blocks;i++)
-            BinaryPrimitives.WriteInt32LittleEndian(d[(100+(int)i*4)..],checked(startBlock+(int)i));
+
+        // Unsigned dinodeD32 files are allocated as contiguous extents.
+        // LibOrbis/PKGForge records the extent start in db[0], marks the
+        // remaining direct slots as -1, and uses Blocks for the extent length.
+        // Large files therefore do not require an indirect pointer tree here.
+        BinaryPrimitives.WriteInt32LittleEndian(d[100..],startBlock);
+        for(var i=1;i<12;i++)
+            BinaryPrimitives.WriteInt32LittleEndian(d[(100+i*4)..],-1);
         s.Write(d);
     }
 }
