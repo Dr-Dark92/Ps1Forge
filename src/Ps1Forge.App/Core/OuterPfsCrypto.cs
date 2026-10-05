@@ -41,7 +41,7 @@ public static class OuterPfsCrypto
 
             image.Position=(long)sectorNo*SectorSize;
             await ReadExactlyAsync(image,sector,ct);
-            AesXts.EncryptInPlace(sector,dataKey,tweakKey,SectorSize,sectorNo);
+            AesXts.EncryptSectorInPlace(sector,dataKey,tweakKey,(ulong)sectorNo);
             image.Position=(long)sectorNo*SectorSize;
             await image.WriteAsync(sector,ct);
         }
