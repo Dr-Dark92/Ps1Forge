@@ -15,7 +15,7 @@ public static class OuterPfsAllocator
     public const int DirectCount=12;
 
     public static OuterPfsFileLayout AllocateLargeFile(
-        long fileSize,long inodeOffset,ref long nextBlock)
+        long fileSize,long inodeOffset,ref long nextBlock,long dataPrefixBlocks=0)
     {
         var blocks=Math.Max(1,CeilDiv(fileSize,BlockSize));
         var perIndirect=BlockSize/SignatureRecordSize;
@@ -44,8 +44,8 @@ public static class OuterPfsAllocator
             }
         }
 
-        var dataStart=nextBlock;
-        nextBlock+=blocks;
+        var dataStart=nextBlock+dataPrefixBlocks;
+        nextBlock+=dataPrefixBlocks+blocks;
 
         var dataSigs=new List<(long,long,int)>();
         var finalSigs=new List<(long,long,int)>();
