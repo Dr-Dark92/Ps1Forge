@@ -32,6 +32,7 @@ public static class PkgValidator
         if(size!=(ulong)fs.Length) errors.Add("Package size does not match file length.");
         if(pfs+pfsSize!=size) errors.Add("PFS extent does not end at package boundary.");
         if(pfsSize==0) errors.Add("PFS payload is empty.");
+        await ValidateEntriesAsync(fs,h,count,table,body,bodySize,errors,ct);
         if(pfsSize>0&&pfs+pfsSize<=(ulong)fs.Length)
         {
             var full=await HashRangeAsync(fs,(long)pfs,(long)pfsSize,ct);
@@ -45,6 +46,30 @@ public static class PkgValidator
             if(!hash.AsSpan().SequenceEqual(h.AsSpan(0x160,32))) errors.Add("Body SHA-256 mismatch.");
         }
         return new(errors.Count==0,errors);
+    }
+
+    private static async Task ValidateEntriesAsync(FileStream fs,byte[] header,uint count,uint table,ulong body,ulong bodySize,List<string> errors,CancellationToken ct)
+    {
+        var tableSize=(ulong)count*32UL;
+        if((ulong)table+tableSize>body){errors.Add("Entry table overlaps package body.");return;}
+        var raw=new byte[checked((int)tableSize)];
+        fs.Position=table; await ReadExactAsync(fs,raw,ct);
+        var ranges=new List<(ulong Start,ulong End,uint Id)>();
+        uint lastId=0;
+        for(var i=0;i<count;i++)
+        {
+            var o=checked((int)i*32);
+            var id=BE32(raw,o); var dataOffset=BE32(raw,o+16); var dataSize=BE32(raw,o+20);
+            if(i>0&&id<lastId) errors.Add("Entry table is not sorted by ID.");
+            lastId=id;
+            var start=(ulong)dataOffset; var end=start+dataSize;
+            if(start<body||end>body+bodySize) errors.Add($"Entry 0x{id:X8} lies outside the package body.");
+            if((start&0xFUL)!=0) errors.Add($"Entry 0x{id:X8} is not 16-byte aligned.");
+            if(dataSize>0) ranges.Add((start,end,id));
+        }
+        var ordered=ranges.OrderBy(x=>x.Start).ToList();
+        for(var i=1;i<ordered.Count;i++)
+            if(ordered[i].Start<ordered[i-1].End) errors.Add($"Entries 0x{ordered[i-1].Id:X8} and 0x{ordered[i].Id:X8} overlap.");
     }
 
     private static uint BE32(byte[] b,int o)=>BinaryPrimitives.ReadUInt32BigEndian(b.AsSpan(o,4));
