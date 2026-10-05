@@ -17,6 +17,7 @@ public static class AesXts
         using var dataEnc = dataAes.CreateEncryptor();
         using var tweakEnc = tweakAes.CreateEncryptor();
 
+        var tweakInput = new byte[16];
         for (var sector = startSector; sector * sectorSize < data.Length; sector++)
         {
             var start = sector * sectorSize;
@@ -24,10 +25,10 @@ public static class AesXts
             if ((len & 15) != 0)
                 throw new InvalidDataException("XTS sector data must be AES-block aligned.");
 
-            Span<byte> tweakInput = stackalloc byte[16];
+            Array.Clear(tweakInput);
             BinaryPrimitives.WriteUInt64LittleEndian(tweakInput, (ulong)sector);
             var tweak = new byte[16];
-            tweakEnc.TransformBlock(tweakInput.ToArray(), 0, 16, tweak, 0);
+            tweakEnc.TransformBlock(tweakInput, 0, 16, tweak, 0);
 
             var block = new byte[16];
             var encrypted = new byte[16];
