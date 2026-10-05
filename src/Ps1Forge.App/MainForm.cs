@@ -181,6 +181,26 @@ public sealed class MainForm : Form
             return;
         }
 
+        var appRoot = AppContext.BaseDirectory;
+        var runtimeRoot = Path.Combine(appRoot, "runtime");
+        var keyRoot = Path.Combine(appRoot, "keys");
+        Directory.CreateDirectory(runtimeRoot);
+        Directory.CreateDirectory(Path.Combine(runtimeRoot, "sce_module"));
+        Directory.CreateDirectory(Path.Combine(runtimeRoot, "bios"));
+        Directory.CreateDirectory(keyRoot);
+
+        var prerequisites = GetMissingPrerequisites(runtimeRoot, keyRoot);
+        if (prerequisites.Count > 0)
+        {
+            var message = "Ps1Forge needs local runtime files before conversion.\n\n" +
+                          "Place these beside Ps1Forge.exe:\n\n" +
+                          string.Join("\n", prerequisites.Select(x => "  • " + x)) +
+                          "\n\nThe required folders have been created for you.";
+            _status.Text = "Runtime setup required.";
+            MessageBox.Show(this, message, "Ps1Forge setup required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         using var folder = new FolderBrowserDialog
         {
             Description = "Select output folder",
@@ -195,15 +215,6 @@ public sealed class MainForm : Form
 
         try
         {
-            var appRoot = AppContext.BaseDirectory;
-            var runtimeRoot = Path.Combine(appRoot, "runtime");
-            var keyRoot = Path.Combine(appRoot, "keys");
-
-            if (!Directory.Exists(runtimeRoot))
-                throw new InvalidDataException("Missing runtime folder beside Ps1Forge.exe.");
-            if (!Directory.Exists(keyRoot))
-                throw new InvalidDataException("Missing keys folder beside Ps1Forge.exe.");
-
             var service = new ConversionService(
                 new Ps4FpkgBackend(runtimeRoot, new FilePkgCryptoProvider(keyRoot)));
             var progress = new Progress<string>(line => _status.Text = line);
@@ -230,7 +241,7 @@ public sealed class MainForm : Form
         catch (Exception ex)
         {
             _status.Text = "Failed: " + ex.Message;
-            MessageBox.Show(this, ex.ToString(), "Conversion failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, "Conversion failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
@@ -238,6 +249,36 @@ public sealed class MainForm : Form
             _cts = null;
             ToggleBusy(false);
         }
+    }
+
+    private static List<string> GetMissingPrerequisites(string runtimeRoot, string keyRoot)
+    {
+        var missing = new List<string>();
+
+        foreach (var relative in Ps1Runtime.RequiredFiles)
+        {
+            var path = Path.Combine(runtimeRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(path))
+                missing.Add("runtime/" + relative);
+        }
+
+        var biosRoot = Path.Combine(runtimeRoot, "bios");
+        if (!Directory.EnumerateFiles(biosRoot, "*", SearchOption.AllDirectories).Any())
+            missing.Add("runtime/bios/ (BIOS files)");
+
+        foreach (var name in new[]
+                 {
+                     "pkg_public_0.bin",
+                     "pkg_public_1.bin",
+                     "pkg_public_3.bin",
+                     "fake_keyset_modulus.bin"
+                 })
+        {
+            if (!File.Exists(Path.Combine(keyRoot, name)))
+                missing.Add("keys/" + name);
+        }
+
+        return missing;
     }
 
     private void ToggleBusy(bool busy)
