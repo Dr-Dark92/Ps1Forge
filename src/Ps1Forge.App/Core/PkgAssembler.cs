@@ -38,6 +38,13 @@ public static class PkgAssembler
             await pkg.FlushAsync(ct);
             await PlayGoShaWriter.ApplyAsync(pkg,layout,ct);
             await PkgFinalizer.ApplyCoreDigestsAsync(pkg,layout,ct,contentId,paramSfo);
+
+            // Match the reference finalization pass: rewrite only the fixed
+            // structural header fields after digest calculation. Digest slots
+            // at 0x100+, 0x140, 0x160, 0x440 and 0x460 remain untouched.
+            pkg.Position=0;
+            await pkg.WriteAsync(header,ct);
+
             await PkgFinalizer.ApplyHeaderDigestAsync(pkg,ct);
             await PkgFinalizer.ApplyHeaderWrapperAsync(pkg,headerWrapper,ct);
             await pkg.FlushAsync(ct);
