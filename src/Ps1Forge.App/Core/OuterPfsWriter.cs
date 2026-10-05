@@ -7,7 +7,7 @@ public static class OuterPfsWriter
     private const int BlockSize=0x10000;
     private const ushort Rx=1|4|8|32|64|256;
     private const ushort Dir=16384, File=32768;
-    private const uint Internal=0x20000, Unk2=4, Unk3=8;
+    private const uint Internal=0x20000, Unk2=4, Unk3=8, Readonly=0x10;
 
     public static async Task<long> BuildAsync(
         string pfscPath,string outputPath,byte[] ekpfs,byte[] seed,
@@ -98,7 +98,7 @@ public static class OuterPfsWriter
         // Header's embedded dinodeS64 starts at 0x50. Its first signed block
         // reference begins at +0x68, therefore global offset 0xB8.
         var inodeSig=SignedPfsPrimitives.BuildSignedInode64(
-            0,1,0,inodeBlocks*BlockSize,(uint)inodeBlocks,
+            0,1,Readonly,inodeBlocks*BlockSize,(uint)inodeBlocks,
             [new SignedBlockRef(new byte[32],1)]);
         inodeSig.CopyTo(h,0x50);
         BinaryPrimitives.WriteInt32LittleEndian(h.AsSpan(0x36C,4),1);
