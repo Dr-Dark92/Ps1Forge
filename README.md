@@ -22,14 +22,42 @@ dotnet build .\src\Ps1Forge.App\Ps1Forge.App.csproj -c Release
 
 ## Current status
 
-v0.1 foundation:
-- WinForms GUI
-- ISO / IMG / BIN / CUE selection
-- CUE parsing and referenced-track validation
-- PS1 serial detection from SYSTEM.CNF data patterns
-- start-image preview and PNG conversion
-- deterministic staging directory
-- packaging backend interface
-- dry-run manifest backend for pipeline testing
+Ps1Forge now has an end-to-end native PS4 fPKG pipeline for CUE/BIN PS1 dumps:
 
-The final PS4 PKG writer/backend is intentionally isolated behind `IPackageBackend` so it can be implemented and tested independently.
+- WinForms `Input → Process → Output` GUI
+- CUE/BIN parsing, validation and multi-BIN normalization
+- PS1 serial/region detection
+- PS1 TOC and PS1HD configuration generation
+- start-screen artwork conversion
+- user-supplied PS1HD runtime and BIOS staging
+- native unsigned inner PFS generation
+- PFSC wrapping
+- signed/encrypted outer PFS generation
+- native PS4 PKG assembly and validation
+- Windows CI covering the complete synthetic CUE/BIN → validated PKG path
+
+The first compatibility target is CUE/BIN. ISO/IMG selection is visible in the UI, but conversion is intentionally rejected until sector-layout conversion is implemented and tested.
+
+## Local runtime layout
+
+Ps1Forge does not ship Sony runtime, BIOS, or proprietary publishing assets. Place runtime files you are legally entitled to use beside the executable:
+
+```text
+Ps1Forge/
+├── Ps1Forge.exe
+├── runtime/
+│   ├── eboot.bin
+│   ├── sce_module/
+│   │   ├── libc.prx
+│   │   ├── libSceFios2.prx
+│   │   └── libSceNpToolkit2.prx
+│   └── bios/
+│       └── <runtime BIOS files>
+└── keys/
+    ├── pkg_public_0.bin
+    ├── pkg_public_1.bin
+    ├── pkg_public_3.bin
+    └── fake_keyset_modulus.bin
+```
+
+`runtime/` and `keys/` are local-only and ignored by Git.
