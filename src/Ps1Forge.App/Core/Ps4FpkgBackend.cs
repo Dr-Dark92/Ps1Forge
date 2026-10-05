@@ -126,7 +126,9 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         Directory.CreateDirectory(outputDirectory);
         var outputPath=Path.Combine(outputDirectory,$"{Ps4Metadata.NormalizeTitleId(analysis.Serial)}.pkg");
         var validation=await PkgAssembler.AssembleAsync(
-            outputPath,outerPfs,contentId,packagePasscode,entries,paramSfo,crypto.HeaderWrapper,cancellationToken);
+            outputPath,outerPfs,contentId,packagePasscode,entries,paramSfo,
+            size=>Ps4Metadata.BuildParamSfo(title,analysis.Serial,size),
+            crypto.HeaderWrapper,cancellationToken);
         if(!validation.Valid)
             throw new InvalidDataException("Generated PKG failed validation: "+string.Join("; ",validation.Errors));
 
