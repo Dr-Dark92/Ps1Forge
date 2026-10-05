@@ -32,7 +32,8 @@ public static class PkgValidator
         if(size!=(ulong)fs.Length) errors.Add("Package size does not match file length.");
         if(pfs+pfsSize!=size) errors.Add("PFS extent does not end at package boundary.");
         if(pfsSize==0) errors.Add("PFS payload is empty.");
-        await ValidateEntriesAsync(fs,h,count,table,body,bodySize,errors,ct);
+        var entries=await ValidateEntriesAsync(fs,count,table,body,bodySize,errors,ct);
+        await ValidateEntryDigestsAsync(fs,h,entries,errors,ct);
         if(pfsSize>0&&pfs+pfsSize<=(ulong)fs.Length)
         {
             var full=await HashRangeAsync(fs,(long)pfs,(long)pfsSize,ct);
@@ -48,10 +49,13 @@ public static class PkgValidator
         return new(errors.Count==0,errors);
     }
 
-    private static async Task ValidateEntriesAsync(FileStream fs,byte[] header,uint count,uint table,ulong body,ulong bodySize,List<string> errors,CancellationToken ct)
+    private sealed record ParsedEntry(uint Id,uint DataOffset,uint DataSize);
+
+    private static async Task<List<ParsedEntry>> ValidateEntriesAsync(FileStream fs,uint count,uint table,ulong body,ulong bodySize,List<string> errors,CancellationToken ct)
     {
         var tableSize=(ulong)count*32UL;
-        if((ulong)table+tableSize>body){errors.Add("Entry table overlaps package body.");return;}
+        if((ulong)table+tableSize>body){errors.Add("Entry table overlaps package body.");return [];}
+        var parsed=new List<ParsedEntry>();
         var raw=new byte[checked((int)tableSize)];
         fs.Position=table; await ReadExactAsync(fs,raw,ct);
         var ranges=new List<(ulong Start,ulong End,uint Id)>();
@@ -65,11 +69,38 @@ public static class PkgValidator
             var start=(ulong)dataOffset; var end=start+dataSize;
             if(start<body||end>body+bodySize) errors.Add($"Entry 0x{id:X8} lies outside the package body.");
             if((start&0xFUL)!=0) errors.Add($"Entry 0x{id:X8} is not 16-byte aligned.");
+            parsed.Add(new ParsedEntry(id,dataOffset,dataSize));
             if(dataSize>0) ranges.Add((start,end,id));
         }
         var ordered=ranges.OrderBy(x=>x.Start).ToList();
         for(var i=1;i<ordered.Count;i++)
             if(ordered[i].Start<ordered[i-1].End) errors.Add($"Entries 0x{ordered[i-1].Id:X8} and 0x{ordered[i].Id:X8} overlap.");
+        return parsed;
+    }
+
+    private static async Task ValidateEntryDigestsAsync(FileStream fs,byte[] header,List<ParsedEntry> entries,List<string> errors,CancellationToken ct)
+    {
+        var sorted=entries.OrderBy(x=>x.Id).ToList();
+        var digestEntry=sorted.FirstOrDefault(x=>x.Id==PkgBodyBuilder.Digests);
+        if(digestEntry is null){errors.Add("DIGESTS entry is missing.");return;}
+        var expectedSize=checked(sorted.Count*32);
+        if(digestEntry.DataSize!=expectedSize){errors.Add("DIGESTS entry has unexpected size.");return;}
+        var table=await ReadRangeAsync(fs,digestEntry.DataOffset,expectedSize,ct);
+        if(table.AsSpan(0,32).IndexOfAnyExcept((byte)0)>=0) errors.Add("DIGESTS slot 0 must be zero.");
+        for(var i=1;i<sorted.Count;i++)
+        {
+            var e=sorted[i];
+            var actual=await HashRangeAsync(fs,e.DataOffset,e.DataSize,ct);
+            if(!actual.AsSpan().SequenceEqual(table.AsSpan(i*32,32)))
+                errors.Add($"Entry digest mismatch for 0x{e.Id:X8}.");
+        }
+        var tableHash=SHA256.HashData(table);
+        if(!tableHash.AsSpan().SequenceEqual(header.AsSpan(0x140,32))) errors.Add("DIGESTS table SHA-256 mismatch.");
+    }
+
+    private static async Task<byte[]> ReadRangeAsync(FileStream fs,long offset,int length,CancellationToken ct)
+    {
+        var data=new byte[length]; fs.Position=offset; await ReadExactAsync(fs,data,ct); return data;
     }
 
     private static uint BE32(byte[] b,int o)=>BinaryPrimitives.ReadUInt32BigEndian(b.AsSpan(o,4));
