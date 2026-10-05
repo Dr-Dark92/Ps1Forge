@@ -61,6 +61,19 @@ public static class PkgFinalizer
         await WriteAtAsync(pkg,0xFE0,SHA256.HashData(header),ct);
     }
 
+    public static async Task ApplyHeaderWrapperAsync(
+        FileStream pkg,
+        Func<byte[],byte[]> wrapper,
+        CancellationToken ct)
+    {
+        var firstPage=await ReadAtAsync(pkg,0,0x1000,ct);
+        var digest=SHA256.HashData(firstPage);
+        var wrapped=wrapper(digest);
+        if(wrapped.Length!=0x100)
+            throw new InvalidDataException($"PKG header wrapper must be 256 bytes, got {wrapped.Length}.");
+        await WriteAtAsync(pkg,0x1000,wrapped,ct);
+    }
+
     private static async Task<byte[]> ConcatEntriesAsync(FileStream pkg,IReadOnlyList<PkgBodyEntry> entries,uint[] ids,bool sc2,CancellationToken ct)
     {
         using var ms=new MemoryStream();
