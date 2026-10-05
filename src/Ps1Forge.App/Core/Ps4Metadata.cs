@@ -23,7 +23,7 @@ public static class Ps4Metadata
         return $"UP9000-{titleId}_00-{suffix}";
     }
 
-    public static byte[] BuildParamSfo(string title, string ps1Serial)
+    public static byte[] BuildParamSfo(string title, string ps1Serial, ulong packageSize = 0)
     {
         var titleId = NormalizeTitleId(ps1Serial);
         var contentId = ContentId(ps1Serial);
@@ -39,7 +39,8 @@ public static class Ps4Metadata
         sfo.AddInt32("DOWNLOAD_DATA_SIZE", 0);
         sfo.AddString("FORMAT", "obs", 4);
         sfo.AddInt32("PARENTAL_LEVEL", 5);
-        sfo.AddString("PUBTOOLINFO", "c_date=20261005,sdk_ver=05050000,st_type=digital50,img0_l0_size=0,img0_l1_size=0,img0_sc_ksize=512,img0_pc_ksize=576", 512);
+        var img0SizeMiB=(packageSize+0xFFFFFUL)/(1024UL*1024UL);
+        sfo.AddString("PUBTOOLINFO", $"c_date={DateTime.UtcNow:yyyyMMdd},sdk_ver=05050000,st_type=digital50,img0_l0_size={img0SizeMiB},img0_l1_size=0,img0_sc_ksize=512,img0_pc_ksize=576", 512);
         sfo.AddInt32("PUBTOOLMINVER", 0x02990000);
         sfo.AddInt32("PUBTOOLVER", 0x03380000);
         sfo.AddInt32("SYSTEM_VER", 0x05050000);
