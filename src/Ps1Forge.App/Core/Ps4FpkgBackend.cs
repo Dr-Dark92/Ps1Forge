@@ -42,11 +42,25 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         Directory.CreateDirectory(sceSys);
         Directory.CreateDirectory(data);
 
+        progress?.Report("Normalizing PS1 disc...");
+        var normalized = await Ps1DiscNormalizer.NormalizeAsync(
+            analysis,
+            data,
+            progress,
+            cancellationToken);
+
+        progress?.Report($"Normalized disc: {Path.GetFileName(normalized.BinPath)} ({normalized.TrackCount} track(s))");
+
         progress?.Report("Preparing PS1HD configuration...");
         await File.WriteAllTextAsync(
             Path.Combine(app0, "config-title.txt"),
             Ps1ConfigBuilder.Build(analysis.Serial, analysis.Region),
             cancellationToken);
+
+        progress?.Report("Preparing PS4 metadata...");
+        var title = analysis.Serial;
+        var paramSfo = Ps4Metadata.BuildParamSfo(title, analysis.Serial);
+        await File.WriteAllBytesAsync(Path.Combine(sceSys, "param.sfo"), paramSfo, cancellationToken);
 
         progress?.Report("Preparing artwork...");
         ArtworkProcessor.CreateIcon(artworkPath, sceSys);
