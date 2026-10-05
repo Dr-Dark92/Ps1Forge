@@ -83,9 +83,9 @@ public static class OuterPfsWriter
         }
         await fs.FlushAsync(ct);
 
-        var signKey=PackageCrypto.PfsGenSignKey(ekpfs,seed);
+        var signKey=PackageCrypto.PfsSigningKey(ekpfs,seed);
         await OuterPfsCrypto.SignAsync(fs,signKey,dataSigs,finalSigs,ct);
-        var (tweakKey,dataKey)=PackageCrypto.PfsGenEncKey(ekpfs,seed);
+        var (tweakKey,dataKey)=PackageCrypto.PfsEncryptionKeys(ekpfs,seed);
         await OuterPfsCrypto.EncryptAsync(fs,dataKey,tweakKey,emptyBlock,ct);
         return fs.Length;
     }
