@@ -102,12 +102,12 @@ public static class OuterPfsWriter
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x30,8),inodeCount);
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x38,8),blocks);
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x40,8),inodeBlocks);
-        // Header's signed 64-bit inode starts at 0x50.
-        BinaryPrimitives.WriteUInt16LittleEndian(h.AsSpan(0x52,2),1);
-        BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x58,8),inodeBlocks*BlockSize);
-        BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x60,8),inodeBlocks*BlockSize);
-        BinaryPrimitives.WriteUInt32LittleEndian(h.AsSpan(0xA0,4),(uint)inodeBlocks);
-        BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0xC0,8),1);
+        // Header's embedded dinodeS64 starts at 0x50. Its first signed block
+        // reference begins at +0x68, therefore global offset 0xB8.
+        var inodeSig=SignedPfsPrimitives.BuildSignedInode64(
+            0,1,0,inodeBlocks*BlockSize,(uint)inodeBlocks,
+            [new SignedBlockRef(new byte[32],1)]);
+        inodeSig.CopyTo(h,0x50);
         BinaryPrimitives.WriteInt32LittleEndian(h.AsSpan(0x36C,4),1);
         seed.CopyTo(h,0x370);
         s.Position=0;s.Write(h);
