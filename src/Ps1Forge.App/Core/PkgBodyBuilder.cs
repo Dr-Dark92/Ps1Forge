@@ -112,7 +112,11 @@ public static class PkgBodyBuilder
             var data = e.Id switch
             {
                 Metas => BuildMetas(layout.Entries),
-                Digests => BuildDigests(layout.Entries),
+                // DIGESTS must be calculated from the bytes actually stored in
+                // the finished body (including encrypted entries). Slot zero is
+                // the digest table itself, so write a zero placeholder here and
+                // let PkgFinalizer populate it after body serialization.
+                Digests => new byte[checked((int)e.DataSize)],
                 _ => e.Data
             };
             if (data.Length != e.DataSize)
