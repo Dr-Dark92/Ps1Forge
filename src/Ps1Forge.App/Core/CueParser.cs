@@ -10,7 +10,7 @@ public static partial class CueParser
     [GeneratedRegex("^\\s*TRACK\\s+(\\d+)\\s+(.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex TrackRegex();
 
-    [GeneratedRegex("^\\s*INDEX\\s+01\\s+(\\d{2}:\\d{2}:\\d{2})", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("^\\s*INDEX\\s+(00|01)\\s+(\\d{2}:\\d{2}:\\d{2})", RegexOptions.IgnoreCase)]
     private static partial Regex IndexRegex();
 
     public static IReadOnlyList<CueTrack> Parse(string cuePath)
@@ -40,6 +40,7 @@ public static partial class CueParser
                     currentFile,
                     int.Parse(trackMatch.Groups[1].Value),
                     trackMatch.Groups[2].Value.Trim(),
+                    null,
                     null));
 
                 currentTrackIndex = tracks.Count - 1;
@@ -50,7 +51,11 @@ public static partial class CueParser
             if (indexMatch.Success && currentTrackIndex >= 0)
             {
                 var old = tracks[currentTrackIndex];
-                tracks[currentTrackIndex] = old with { Index01 = indexMatch.Groups[1].Value };
+                var index=indexMatch.Groups[1].Value;
+                var time=indexMatch.Groups[2].Value;
+                tracks[currentTrackIndex] = index=="00"
+                    ? old with { Index00=time }
+                    : old with { Index01=time };
             }
         }
 
