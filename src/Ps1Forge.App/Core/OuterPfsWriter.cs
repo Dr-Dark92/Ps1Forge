@@ -24,10 +24,13 @@ public static class OuterPfsWriter
 
         // pfs_image inode is #3, at block 1 + 3*0x2c8.
         var fileInodeOffset=inodeBlock*BlockSize+3L*SignedPfsPrimitives.SignedInode32Size;
+        var urootBlockPlaceholder=nextBlock;
         var layout=OuterPfsAllocator.AllocateLargeFile(
-            pfscSize,fileInodeOffset,ref nextBlock);
+            pfscSize,fileInodeOffset,ref nextBlock,dataPrefixBlocks:1);
 
-        var urootBlock=nextBlock++;
+        var urootBlock=layout.DataStartBlock-1;
+        if(urootBlock<urootBlockPlaceholder)
+            throw new InvalidDataException("Outer PFS uroot allocation underflow.");
         var totalBlocks=nextBlock;
         await using var fs=new FileStream(outputPath,FileMode.Create,FileAccess.ReadWrite,FileShare.None,1024*1024,FileOptions.Asynchronous);
         fs.SetLength(totalBlocks*BlockSize);
