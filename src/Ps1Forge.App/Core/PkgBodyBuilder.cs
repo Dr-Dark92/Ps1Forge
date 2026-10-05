@@ -66,6 +66,7 @@ public static class PkgBodyBuilder
         var bodySize = Align(cursor, 0x80000) - PkgHeader.BodyOffset;
         var pfsOffset = PkgHeader.BodyOffset + bodySize;
         var packageSize = pfsOffset + outerPfsSize;
+        FinalizePlayGoChunkDat(entries,packageSize);
         return new(entries, names, PkgHeader.BodyOffset, bodySize, pfsOffset, packageSize);
     }
 
@@ -129,6 +130,15 @@ public static class PkgBodyBuilder
         }
         if ((ulong)output.Length < layout.PfsOffset)
             output.SetLength((long)layout.PfsOffset);
+    }
+
+    private static void FinalizePlayGoChunkDat(List<PkgBodyEntry> entries,ulong packageSize)
+    {
+        var chunkDat=entries.FirstOrDefault(e=>e.Id==PlayGoChunkDat);
+        if(chunkDat is null) return;
+        if(chunkDat.Data.Length!=416)
+            throw new InvalidDataException("playgo-chunk.dat must remain exactly 416 bytes.");
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64LittleEndian(chunkDat.Data.AsSpan(0x148,8),packageSize);
     }
 
     private static void StabilizePlayGoShaSize(List<PkgBodyEntry> entries,ulong outerPfsSize)
