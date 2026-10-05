@@ -28,13 +28,6 @@ public static class PkgAssembler
         paramEntry.Data=finalParamSfo;
         paramSfo=finalParamSfo;
 
-        var finalParamSfo=finalizeParamSfo(layout.PackageSize);
-        if(finalParamSfo.Length!=paramSfo.Length)
-            throw new InvalidDataException($"Final param.sfo size changed from {paramSfo.Length} to {finalParamSfo.Length} bytes.");
-        var paramEntry=layout.Entries.First(e=>e.Id==PkgBodyBuilder.ParamSfo);
-        paramEntry.Data=finalParamSfo;
-        paramSfo=finalParamSfo;
-
         var mainSize=layout.Entries
             .Where(e=>e.Id is PkgBodyBuilder.EntryKeys or PkgBodyBuilder.ImageKey or PkgBodyBuilder.GeneralDigests or PkgBodyBuilder.Metas or PkgBodyBuilder.Digests)
             .Aggregate(0u,(sum,e)=>checked(sum+e.DataSize));
