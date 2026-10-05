@@ -10,15 +10,18 @@ public sealed class FilePkgCryptoProvider : IPkgCryptoProvider
     {
         if(ekpfs.Length!=32) throw new ArgumentException("EKPFS must be exactly 32 bytes.",nameof(ekpfs));
 
+        // Reference fPKG ENTRY_KEYS uses public key slots 0, 1 and 3.
+        // Slots 2, 4, 5 and 6 are intentionally zero-filled; silently
+        // zeroing a required slot would produce a structurally valid but
+        // unusable package.
         var publicKeys=new byte[7][];
-        for(var i=0;i<7;i++)
-        {
-            var path=Path.Combine(_keyRoot,$"pkg_public_{i}.bin");
-            publicKeys[i]=File.Exists(path) ? ReadModulus(path) : new byte[256];
-        }
-        if(IsZero(publicKeys[0])) throw new InvalidDataException("Missing keys/pkg_public_0.bin.");
+        for(var i=0;i<publicKeys.Length;i++) publicKeys[i]=new byte[256];
+        publicKeys[0]=ReadRequiredModulus("pkg_public_0.bin");
+        publicKeys[1]=ReadRequiredModulus("pkg_public_1.bin");
+        publicKeys[3]=ReadRequiredModulus("pkg_public_3.bin");
+
         var fakeModulus=ReadRequiredModulus("fake_keyset_modulus.bin");
-        var headerModulus=ReadRequiredModulus("pkg_public_3.bin");
+        var headerModulus=publicKeys[3];
 
         var entryKeys=BuildEntryKeys(contentId,passcode,publicKeys);
         var imageKey=PkgRsa.EncryptKey(fakeModulus,ekpfs);
