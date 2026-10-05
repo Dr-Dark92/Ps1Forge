@@ -60,15 +60,45 @@ public static class Ps1DiscNormalizer
     private static string BuildPackageCue(IReadOnlyList<CueTrack> tracks)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("FILE \"disc1.bin\" BINARY");
+        sb.Append("FILE \"disc1.bin\" BINARY\r\n");
 
+        long accumulatedSectors = 0;
+        string? currentFile = null;
         foreach (var track in tracks)
         {
-            sb.AppendLine($"  TRACK {track.Number:00} {track.Mode}");
-            sb.AppendLine($"    INDEX 01 {track.Index01 ?? "00:00:00"}");
-        }
+            if (!string.Equals(currentFile, track.FilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                if (currentFile is not null)
+                    accumulatedSectors += new FileInfo(currentFile).Length / 2352;
+                currentFile = track.FilePath;
+            }
 
-        return sb.ToString().Replace("\n", "\r\n");
+            var local = CueTimeToSectors(track.Index01);
+            var absolute = accumulatedSectors + local;
+            sb.Append($"  TRACK {track.Number:00} {track.Mode}\r\n");
+            sb.Append($"    INDEX 01 {SectorsToCueTime(absolute)}\r\n");
+        }
+        return sb.ToString();
+    }
+
+    private static long CueTimeToSectors(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return 0;
+        var p = value.Split(':');
+        if (p.Length != 3 ||
+            !int.TryParse(p[0], out var m) ||
+            !int.TryParse(p[1], out var s) ||
+            !int.TryParse(p[2], out var f))
+            throw new InvalidDataException($"Invalid CUE INDEX time: {value}");
+        return ((long)m * 60 + s) * 75 + f;
+    }
+
+    private static string SectorsToCueTime(long sectors)
+    {
+        var m = sectors / (60 * 75);
+        var s = (sectors / 75) % 60;
+        var f = sectors % 75;
+        return $"{m:00}:{s:00}:{f:00}";
     }
 
     private static async Task CopyAsync(string source, string target, CancellationToken cancellationToken)
