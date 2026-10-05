@@ -6,6 +6,7 @@ namespace Ps1Forge.Core;
 
 public sealed record PkgBodyEntry(uint Id, string Name, byte[] Data, uint Flags1 = 0, uint Flags2 = 0)
 {
+    public byte[] Data { get; set; } = Data;
     public uint NameOffset { get; set; }
     public uint DataOffset { get; set; }
     public uint LogicalSize { get; set; }
