@@ -183,13 +183,11 @@ public sealed class MainForm : Form
 
         var appRoot = AppContext.BaseDirectory;
         var runtimeRoot = Path.Combine(appRoot, "runtime");
-        var keyRoot = Path.Combine(appRoot, "keys");
         Directory.CreateDirectory(runtimeRoot);
         Directory.CreateDirectory(Path.Combine(runtimeRoot, "sce_module"));
         Directory.CreateDirectory(Path.Combine(runtimeRoot, "bios"));
-        Directory.CreateDirectory(keyRoot);
 
-        var prerequisites = GetMissingPrerequisites(runtimeRoot, keyRoot);
+        var prerequisites = GetMissingPrerequisites(runtimeRoot);
         if (prerequisites.Count > 0)
         {
             var message = "Ps1Forge needs local runtime files before conversion.\n\n" +
@@ -216,7 +214,7 @@ public sealed class MainForm : Form
         try
         {
             var service = new ConversionService(
-                new Ps4FpkgBackend(runtimeRoot, new FilePkgCryptoProvider(keyRoot)));
+                new Ps4FpkgBackend(runtimeRoot, new FilePkgCryptoProvider()));
             var progress = new Progress<string>(line => _status.Text = line);
 
             var result = await service.ConvertAsync(
@@ -251,7 +249,7 @@ public sealed class MainForm : Form
         }
     }
 
-    private static List<string> GetMissingPrerequisites(string runtimeRoot, string keyRoot)
+    private static List<string> GetMissingPrerequisites(string runtimeRoot)
     {
         var missing = new List<string>();
 
@@ -265,18 +263,6 @@ public sealed class MainForm : Form
         var biosRoot = Path.Combine(runtimeRoot, "bios");
         if (!Directory.EnumerateFiles(biosRoot, "*", SearchOption.AllDirectories).Any())
             missing.Add("runtime/bios/ (BIOS files)");
-
-        foreach (var name in new[]
-                 {
-                     "pkg_public_0.bin",
-                     "pkg_public_1.bin",
-                     "pkg_public_3.bin",
-                     "fake_keyset_modulus.bin"
-                 })
-        {
-            if (!File.Exists(Path.Combine(keyRoot, name)))
-                missing.Add("keys/" + name);
-        }
 
         return missing;
     }
