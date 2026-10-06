@@ -9,7 +9,8 @@ public sealed class SfoMetadataTests
     public void Ps1ParamSfo_MatchesReferenceGeometry()
     {
         var sfo = Ps4Metadata.BuildParamSfo("SLUS01212", "SLUS01212", 106233856);
-        Assert.Equal(1660, sfo.Length);\n        Assert.Equal("UP9000-SLUS01212_00-SLUS01212PSXFPKG", Ps4Metadata.ContentId("SLUS-01212"));
+        Assert.Equal(1660, sfo.Length);
+        Assert.Equal("UP9000-SLUS01212_00-SLUS01212PSXFPKG", Ps4Metadata.ContentId("SLUS-01212"));
 
         var ascii = System.Text.Encoding.ASCII.GetString(sfo);
         Assert.Contains("img0_sc_ksize=2048", ascii);
