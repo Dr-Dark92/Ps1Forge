@@ -34,6 +34,7 @@ public static class PkgBodyBuilder
     public const uint EntryNames = 0x00000200;
     public const uint LicenseDat = 0x00000400;
     public const uint LicenseInfo = 0x00000401;
+    public const uint NpBindDat = 0x00000403;
     public const uint PsReservedDat = 0x00000409;
     public const uint ParamSfo = 0x00001000;
     public const uint PlayGoChunkDat = 0x00001001;
