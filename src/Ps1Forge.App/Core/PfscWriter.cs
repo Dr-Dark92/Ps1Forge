@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Reflection;
 
 namespace Ps1Forge.Core;
 
@@ -40,7 +41,7 @@ public static class PfscWriter
             if (compress && read > 0)
             {
                 using var ms = new MemoryStream();
-                using (var z = new ZLibStream(ms, CompressionLevel.Optimal, true))
+                using (var z = CreatePs4ZlibStream(ms))
                     z.Write(buffer, 0, read);
                 var zipped = ms.ToArray();
 
@@ -92,6 +93,27 @@ public static class PfscWriter
         output.Position = headerSize;
         foreach (var block in blocks)
             await output.WriteAsync(block, cancellationToken);
+    }
+
+    private static Stream CreatePs4ZlibStream(Stream output)
+    {
+        // PS4 PFSC compressed blocks use zlib with windowBits=12. .NET's
+        // public ZLibStream API does not expose the window size, so use the
+        // runtime's ZLibCompressionOptions when available and fail closed
+        // rather than silently producing an incompatible stream.
+        var optionsType=Type.GetType("System.IO.Compression.ZLibCompressionOptions, System.IO.Compression");
+        if(optionsType is null)
+            throw new PlatformNotSupportedException("This .NET runtime does not expose ZLibCompressionOptions required for PS4 PFSC.");
+
+        var options=Activator.CreateInstance(optionsType)
+            ?? throw new PlatformNotSupportedException("Could not create ZLibCompressionOptions.");
+        optionsType.GetProperty("CompressionLevel")?.SetValue(options,CompressionLevel.Optimal);
+        optionsType.GetProperty("CompressionStrategy")?.SetValue(options,0);
+        optionsType.GetProperty("WindowBits")?.SetValue(options,12);
+
+        var ctor=typeof(ZLibStream).GetConstructor([typeof(Stream),optionsType,typeof(bool)])
+            ?? throw new PlatformNotSupportedException("This .NET runtime cannot construct a PS4-compatible zlib stream.");
+        return (Stream)ctor.Invoke([output,options,true]);
     }
 
     private static long HeaderSize(long blockCount)
