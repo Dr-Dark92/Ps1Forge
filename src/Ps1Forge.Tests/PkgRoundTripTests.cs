@@ -34,6 +34,13 @@ public sealed class PkgRoundTripTests
                 });
 
             var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},0x10000,crypto);
+            var planned=PkgBodyBuilder.Plan(entries,(ulong)new FileInfo(pfs).Length);
+            var namesEntry=planned.Entries.Single(e=>e.Id==PkgBodyBuilder.EntryNames);
+            Assert.NotEmpty(namesEntry.Data);
+            Assert.Equal(planned.EntryNames,namesEntry.Data);
+            Assert.Contains("param.sfo",System.Text.Encoding.UTF8.GetString(namesEntry.Data));
+            Assert.Contains("playgo-chunk.dat",System.Text.Encoding.UTF8.GetString(namesEntry.Data));
+
             var output=Path.Combine(root,"fixture.pkg");
             var validation=await PkgAssembler.AssembleAsync(
                 output,pfs,contentId,passcode,entries,param,
