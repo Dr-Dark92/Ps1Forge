@@ -104,18 +104,18 @@ public static class PfscWriter
         {
             public IntPtr next_in;
             public uint avail_in;
-            public ulong total_in;
+            public uint total_in;
             public IntPtr next_out;
             public uint avail_out;
-            public ulong total_out;
+            public uint total_out;
             public IntPtr msg;
             public IntPtr state;
             public IntPtr zalloc;
             public IntPtr zfree;
             public IntPtr opaque;
             public int data_type;
-            public ulong adler;
-            public ulong reserved;
+            public uint adler;
+            public uint reserved;
         }
 
         [DllImport("zlib1.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -156,7 +156,7 @@ public static class PfscWriter
                 try
                 {
                     rc = deflate(ref stream, ZFinish);
-                    if (rc != ZStreamEnd || stream.total_out >= (ulong)input.Length)
+                    if (rc != ZStreamEnd || stream.total_out >= (uint)input.Length)
                         return null;
                     return target.AsSpan(0, checked((int)stream.total_out)).ToArray();
                 }
