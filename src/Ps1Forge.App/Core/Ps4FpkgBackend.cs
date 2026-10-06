@@ -106,10 +106,9 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Wrapping inner PFS as PFSC...");
         var pfsc = Path.Combine(stagingDirectory, "pfs_image.dat");
-        // Keep PFSC blocks uncompressed for compatibility. Compressed PS4
-        // PFSC requires native zlib deflateInit2(windowBits=12); .NET 8's
-        // ZLibStream does not expose that setting.
-        await PfscWriter.WrapAsync(innerPfs, pfsc, false, progress, cancellationToken);
+        // Match the PS4 reference PFSC encoder: zlib level 6 with a 4 KiB
+        // history window (deflateInit2 windowBits=12).
+        await PfscWriter.WrapAsync(innerPfs, pfsc, true, progress, cancellationToken);
 
         progress?.Report("Building signed/encrypted outer PFS...");
         var contentId = Ps4Metadata.ContentId(analysis.Serial);
