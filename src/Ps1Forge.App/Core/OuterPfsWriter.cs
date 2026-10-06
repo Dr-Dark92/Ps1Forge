@@ -7,7 +7,7 @@ public static class OuterPfsWriter
     private const int BlockSize=0x10000;
     private const ushort Rx=1|4|8|32|64|256;
     private const ushort Dir=16384, File=32768;
-    private const uint Internal=0x20000, Unk2=4, Unk3=8, Readonly=0x10;
+    private const uint Compressed=0x1, Internal=0x20000, Unk2=4, Unk3=8, Readonly=0x10;
 
     public static async Task<long> BuildAsync(
         string pfscPath,string outputPath,byte[] ekpfs,byte[] seed,
@@ -62,7 +62,7 @@ public static class OuterPfsWriter
         WriteInode(fs,superInodeOff,(ushort)(Dir|Rx),1,Internal|Unk2|Unk3,BlockSize,1,superRootBlock,null,null,fileTime);
         WriteInode(fs,flatInodeOff,(ushort)(File|Rx),1,Internal|Unk2|Unk3,8,1,flatBlock,null,null,fileTime);
         WriteInode(fs,rootInodeOff,(ushort)(Dir|Rx),2,Unk2|Unk3,BlockSize,1,urootBlock,null,null,fileTime);
-        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.InodeIndirectBlocks,logicalInnerPfsSize,fileTime);
+        WriteInode(fs,fileInodeOffset,(ushort)(File|Rx),1,Compressed|Unk2|Unk3,pfscSize,checked((uint)layout.DataBlocks),layout.DataStartBlock,layout.InodeIndirectBlocks,logicalInnerPfsSize,fileTime);
 
         fs.Position=superRootBlock*BlockSize;
         PfsPrimitives.WriteDirent(fs,1,2,"flat_path_table");
