@@ -21,6 +21,15 @@ jobs:
         run: dotnet test Ps1Forge.sln -c Release --no-build --verbosity normal
       - name: Publish
         run: dotnet publish src/Ps1Forge.App/Ps1Forge.App.csproj -c Release -r win-x64 --self-contained false -o artifacts/Ps1Forge
+      - name: Bundle zlib runtime
+        shell: pwsh
+        run: |
+          $zlib = Get-ChildItem -Path C:\ -Filter zlib1.dll -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match 'x64|mingw64|usr\\bin' } |
+            Select-Object -First 1
+          if (-not $zlib) { throw 'zlib1.dll was not found on the Windows runner.' }
+          Copy-Item $zlib.FullName artifacts/Ps1Forge/zlib1.dll
+          Write-Host "Bundled $($zlib.FullName)"
       - uses: actions/upload-artifact@v4
         with:
           name: Ps1Forge-win-x64
