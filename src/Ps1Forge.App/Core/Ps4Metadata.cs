@@ -40,7 +40,7 @@ public static class Ps4Metadata
         sfo.AddString("FORMAT", "obs", 4);
         sfo.AddInt32("PARENTAL_LEVEL", 5);
         var img0SizeMiB=(packageSize+0xFFFFFUL)/(1024UL*1024UL);
-        sfo.AddString("PUBTOOLINFO", $"c_date={DateTime.UtcNow:yyyyMMdd},sdk_ver=05050000,st_type=digital50,img0_l0_size={img0SizeMiB},img0_l1_size=0,img0_sc_ksize=512,img0_pc_ksize=576", 512);
+        sfo.AddString("PUBTOOLINFO", $"c_date={DateTime.UtcNow:yyyyMMdd},sdk_ver=05050000,st_type=digital50,img0_l0_size={img0SizeMiB},img0_l1_size=0,img0_sc_ksize=2048,img0_pc_ksize=576", 512);
         sfo.AddInt32("PUBTOOLMINVER", 0x02990000);
         sfo.AddInt32("PUBTOOLVER", 0x03380000);
         // PS1 fPKG templates reserve seven add-content service IDs. Even when
