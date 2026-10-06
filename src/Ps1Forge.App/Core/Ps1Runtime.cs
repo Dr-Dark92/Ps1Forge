@@ -27,9 +27,13 @@ public static class Ps1Runtime
         if (File.Exists(npbind) && new FileInfo(npbind).Length != 0x214)
             missing.Add("sce_sys/npbind.dat (must be exactly 532 bytes)");
 
-        var bios = Path.Combine(root, "bios");
-        if (!Directory.Exists(bios) || !Directory.EnumerateFiles(bios, "*", SearchOption.AllDirectories).Any())
-            missing.Add("bios/ (non-empty directory)");
+        var assets = Path.Combine(root, "assets", "common");
+        if (!Directory.Exists(assets) || !Directory.EnumerateFiles(assets, "*", SearchOption.AllDirectories).Any())
+            missing.Add("assets/common/ (non-empty directory)");
+
+        var bios = Path.Combine(root, "assets", "PS1HD", "bios");
+        if (!Directory.Exists(bios) || !Directory.EnumerateFiles(bios, "*.bin", SearchOption.TopDirectoryOnly).Any())
+            missing.Add("assets/PS1HD/bios/ (non-empty directory)");
 
         return new RuntimeValidation(missing.Count == 0, root, missing);
     }
