@@ -1,3 +1,4 @@
+using Xunit;
 using Ps1Forge.Core;
 
 namespace Ps1Forge.Tests;
