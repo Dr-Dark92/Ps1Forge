@@ -106,10 +106,9 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Wrapping inner PFS as PFSC...");
         var pfsc = Path.Combine(stagingDirectory, "pfs_image.dat");
-        // Keep the first compatibility build uncompressed. PKGForge uses a
-        // non-default zlib window for compressed PFSC blocks; uncompressed
-        // 64 KiB blocks avoid introducing that compatibility variable.
-        await PfscWriter.WrapAsync(innerPfs, pfsc, false, progress, cancellationToken);
+        // Match the reference PFSC path: compress each 64 KiB logical block
+        // with the PS4-compatible zlib window when compression is beneficial.
+        await PfscWriter.WrapAsync(innerPfs, pfsc, true, progress, cancellationToken);
 
         progress?.Report("Building signed/encrypted outer PFS...");
         var contentId = Ps4Metadata.ContentId(analysis.Serial);
