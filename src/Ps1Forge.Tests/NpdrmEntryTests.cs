@@ -21,7 +21,8 @@ public sealed class NpdrmEntryTests
         Assert.Equal(0x214u, entry.DataSize);
         Assert.Equal(0x220u, entry.StoredSize);
 
-        var next = layout.Entries[layout.Entries.ToList().IndexOf(entry) + 1];
-        Assert.True(next.DataOffset >= entry.DataOffset + entry.StoredSize);
+        var npbindIndex = layout.Entries.ToList().IndexOf(entry);
+        Assert.Equal(layout.Entries.Count - 1, npbindIndex);
+        Assert.True(layout.PfsOffset >= entry.DataOffset + entry.StoredSize);
     }
 }
