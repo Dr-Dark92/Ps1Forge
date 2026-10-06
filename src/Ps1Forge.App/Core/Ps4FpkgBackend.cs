@@ -129,13 +129,11 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         var crypto=_crypto.Prepare(contentId,packagePasscode,ekpfs);
         var iconPath=Path.Combine(sceSys,"icon0.png");
         var icon0=await File.ReadAllBytesAsync(iconPath,cancellationToken);
-        byte[]? npbindDat=null;
         var npbindPath=Path.Combine(_runtimeRoot,"sce_sys","npbind.dat");
-        if(File.Exists(npbindPath))
-        {
-            progress?.Report("Importing runtime NPDRM binding metadata...");
-            npbindDat=await File.ReadAllBytesAsync(npbindPath,cancellationToken);
-        }
+        progress?.Report("Importing PS1HD template NPDRM binding metadata...");
+        var npbindDat=await File.ReadAllBytesAsync(npbindPath,cancellationToken);
+        if(npbindDat.Length!=0x214)
+            throw new InvalidDataException("PS1HD template sce_sys/npbind.dat must be exactly 532 bytes.");
         var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat);
 
         progress?.Report("Assembling PS4 package...");
