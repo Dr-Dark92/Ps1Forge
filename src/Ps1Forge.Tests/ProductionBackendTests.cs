@@ -31,9 +31,13 @@ public sealed class ProductionBackendTests
                 await File.WriteAllBytesAsync(p,Enumerable.Range(0,size).Select(i=>(byte)(i*19+relative.Length)).ToArray());
             }
 
-            var bios=Path.Combine(runtime,"bios");
+            var assetsCommon=Path.Combine(runtime,"assets","common");
+            Directory.CreateDirectory(assetsCommon);
+            await File.WriteAllBytesAsync(Path.Combine(assetsCommon,"test.png"),new byte[4096]);
+
+            var bios=Path.Combine(runtime,"assets","PS1HD","bios");
             Directory.CreateDirectory(bios);
-            await File.WriteAllBytesAsync(Path.Combine(bios,"test.bin"),new byte[4096]);
+            await File.WriteAllBytesAsync(Path.Combine(bios,"SCPH5501.bin"),new byte[4096]);
 
             var bin=Path.Combine(root,"game.bin");
             await File.WriteAllBytesAsync(bin,new byte[2352*400]);
