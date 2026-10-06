@@ -14,7 +14,7 @@ public static class PkgEntryBuilder
         byte[] icon0,
         ulong innerPfsSize,
         PkgPreparedCrypto crypto,
-        byte[]? npbindDat = null)
+        byte[] npbindDat)
     {
         RequireSize(crypto.EntryKeys,0x800,nameof(crypto.EntryKeys));
         RequireSize(crypto.ImageKey,0x100,nameof(crypto.ImageKey));
@@ -38,12 +38,8 @@ public static class PkgEntryBuilder
             new(PkgBodyBuilder.Icon0Png,"icon0.png",icon0)
         };
 
-        if (npbindDat is not null)
-        {
-            if (npbindDat.Length == 0)
-                throw new ArgumentException("npbind.dat must not be empty.", nameof(npbindDat));
-            entries.Add(new PkgBodyEntry(PkgBodyBuilder.NpBindDat,"npbind.dat",npbindDat,0x80000000,3u<<12));
-        }
+        RequireSize(npbindDat,0x214,nameof(npbindDat));
+        entries.Add(new PkgBodyEntry(PkgBodyBuilder.NpBindDat,"npbind.dat",npbindDat,0x80000000,3u<<12));
 
         return entries;
     }
