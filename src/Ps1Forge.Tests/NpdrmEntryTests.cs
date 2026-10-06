@@ -13,7 +13,7 @@ public sealed class NpdrmEntryTests
 
         var entries = PkgEntryBuilder.Build("UP0000-SLUS01212_00-0000000000000000", new byte[0x67C], new byte[0x100], 0x10000, crypto, npbind);
         var layout = PkgBodyBuilder.Plan(entries, 0x10000);
-        var entry = Assert.Single(layout.Entries.Where(x => x.Id == PkgBodyBuilder.NpBindDat));
+        var entry = Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.NpBindDat);
 
         Assert.Equal("npbind.dat", entry.Name);
         Assert.Equal(0x80000000u, entry.Flags1);
