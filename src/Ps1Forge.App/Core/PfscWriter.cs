@@ -1,5 +1,5 @@
 using System.Buffers.Binary;
-using System.IO.Compression;
+using System.Runtime.InteropServices;
 
 namespace Ps1Forge.Core;
 
@@ -39,12 +39,9 @@ public static class PfscWriter
             byte[] stored;
             if (compress && read > 0)
             {
-                using var ms = new MemoryStream();
-                using (var z = CreatePs4ZlibStream(ms))
-                    z.Write(buffer, 0, read);
-                var zipped = ms.ToArray();
+                var zipped = Ps4Zlib.TryCompress(buffer.AsSpan(0, read));
 
-                if (zipped.Length < BlockSize)
+                if (zipped is not null && zipped.Length < BlockSize)
                     stored = zipped;
                 else
                 {
@@ -94,16 +91,86 @@ public static class PfscWriter
             await output.WriteAsync(block, cancellationToken);
     }
 
-    private static Stream CreatePs4ZlibStream(Stream output)
+    private static class Ps4Zlib
     {
-        // A zlib stream's CMF byte encodes CINFO = log2(windowSize)-8.
-        // PS4 PFSC requires CINFO=4 (windowBits=12). .NET 8's ZLibStream
-        // emits the normal 32 KiB window (CINFO=7), so it cannot be used
-        // for compressed PFSC blocks without a lower-level deflateInit2 API.
-        // Fail closed here; production will keep PFSC uncompressed until the
-        // native windowBits=12 encoder is integrated.
-        throw new PlatformNotSupportedException(
-            "PS4 PFSC compression requires zlib deflateInit2(windowBits=12).");
+        private const int ZOk = 0;
+        private const int ZStreamEnd = 1;
+        private const int ZFinish = 4;
+        private const int ZDeflated = 8;
+        private const int ZDefaultStrategy = 0;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ZStream
+        {
+            public IntPtr next_in;
+            public uint avail_in;
+            public ulong total_in;
+            public IntPtr next_out;
+            public uint avail_out;
+            public ulong total_out;
+            public IntPtr msg;
+            public IntPtr state;
+            public IntPtr zalloc;
+            public IntPtr zfree;
+            public IntPtr opaque;
+            public int data_type;
+            public ulong adler;
+            public ulong reserved;
+        }
+
+        [DllImport("zlib1.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr zlibVersion();
+
+        [DllImport("zlib1.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int deflateInit2_(
+            ref ZStream stream, int level, int method, int windowBits,
+            int memLevel, int strategy, IntPtr version, int streamSize);
+
+        [DllImport("zlib1.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int deflate(ref ZStream stream, int flush);
+
+        [DllImport("zlib1.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int deflateEnd(ref ZStream stream);
+
+        public static byte[]? TryCompress(ReadOnlySpan<byte> input)
+        {
+            var source = input.ToArray();
+            var target = new byte[source.Length + source.Length / 1000 + 64];
+            var inHandle = GCHandle.Alloc(source, GCHandleType.Pinned);
+            var outHandle = GCHandle.Alloc(target, GCHandleType.Pinned);
+            try
+            {
+                var stream = new ZStream
+                {
+                    next_in = inHandle.AddrOfPinnedObject(),
+                    avail_in = checked((uint)source.Length),
+                    next_out = outHandle.AddrOfPinnedObject(),
+                    avail_out = checked((uint)target.Length)
+                };
+
+                var rc = deflateInit2_(ref stream, 6, ZDeflated, 12, 8,
+                    ZDefaultStrategy, zlibVersion(), Marshal.SizeOf<ZStream>());
+                if (rc != ZOk)
+                    throw new InvalidOperationException($"zlib deflateInit2 failed: {rc}.");
+
+                try
+                {
+                    rc = deflate(ref stream, ZFinish);
+                    if (rc != ZStreamEnd || stream.total_out >= (ulong)input.Length)
+                        return null;
+                    return target.AsSpan(0, checked((int)stream.total_out)).ToArray();
+                }
+                finally
+                {
+                    deflateEnd(ref stream);
+                }
+            }
+            finally
+            {
+                outHandle.Free();
+                inHandle.Free();
+            }
+        }
     }
 
     private static long HeaderSize(long blockCount)
