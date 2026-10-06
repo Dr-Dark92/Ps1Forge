@@ -1,6 +1,5 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
-using System.Reflection;
 
 namespace Ps1Forge.Core;
 
@@ -97,23 +96,14 @@ public static class PfscWriter
 
     private static Stream CreatePs4ZlibStream(Stream output)
     {
-        // PS4 PFSC compressed blocks use zlib with windowBits=12. .NET's
-        // public ZLibStream API does not expose the window size, so use the
-        // runtime's ZLibCompressionOptions when available and fail closed
-        // rather than silently producing an incompatible stream.
-        var optionsType=Type.GetType("System.IO.Compression.ZLibCompressionOptions, System.IO.Compression");
-        if(optionsType is null)
-            throw new PlatformNotSupportedException("This .NET runtime does not expose ZLibCompressionOptions required for PS4 PFSC.");
-
-        var options=Activator.CreateInstance(optionsType)
-            ?? throw new PlatformNotSupportedException("Could not create ZLibCompressionOptions.");
-        optionsType.GetProperty("CompressionLevel")?.SetValue(options,CompressionLevel.Optimal);
-        optionsType.GetProperty("CompressionStrategy")?.SetValue(options,0);
-        optionsType.GetProperty("WindowBits")?.SetValue(options,12);
-
-        var ctor=typeof(ZLibStream).GetConstructor([typeof(Stream),optionsType,typeof(bool)])
-            ?? throw new PlatformNotSupportedException("This .NET runtime cannot construct a PS4-compatible zlib stream.");
-        return (Stream)ctor.Invoke([output,options,true]);
+        // A zlib stream's CMF byte encodes CINFO = log2(windowSize)-8.
+        // PS4 PFSC requires CINFO=4 (windowBits=12). .NET 8's ZLibStream
+        // emits the normal 32 KiB window (CINFO=7), so it cannot be used
+        // for compressed PFSC blocks without a lower-level deflateInit2 API.
+        // Fail closed here; production will keep PFSC uncompressed until the
+        // native windowBits=12 encoder is integrated.
+        throw new PlatformNotSupportedException(
+            "PS4 PFSC compression requires zlib deflateInit2(windowBits=12).");
     }
 
     private static long HeaderSize(long blockCount)
