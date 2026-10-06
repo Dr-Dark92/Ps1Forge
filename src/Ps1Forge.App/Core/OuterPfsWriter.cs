@@ -101,7 +101,7 @@ public static class OuterPfsWriter
         h[0x1A]=1;
         BinaryPrimitives.WriteUInt16LittleEndian(h.AsSpan(0x1C,2),0xD); // signed|encrypted|unknown
         BinaryPrimitives.WriteUInt32LittleEndian(h.AsSpan(0x20,4),BlockSize);
-        BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x28,8),blocks);
+        // Signed outer PFS reference format keeps ndblock at 1; total data geometry is in 0x38.\n        BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x28,8),1);
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x30,8),inodeCount);
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x38,8),blocks);
         BinaryPrimitives.WriteInt64LittleEndian(h.AsSpan(0x40,8),inodeBlocks);
