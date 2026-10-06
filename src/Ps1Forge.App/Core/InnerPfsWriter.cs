@@ -63,6 +63,9 @@ public static class InnerPfsWriter
         var inodesPerBlock = PfsPrimitives.BlockSize / PfsPrimitives.UnsignedInodeSize;
         var inodeBlocks = (int)PfsPrimitives.CeilDiv(inodeCount, inodesPerBlock);
 
+        // Reference unsigned PFS starts with the header, then the inode table.
+        // The inode-table header extent points at block 1; advance past every
+        // inode-table block before allocating super-root data.
         var block = 1 + inodeBlocks;
         superRoot.StartBlock = block++;
         flat.StartBlock = block;
