@@ -90,14 +90,25 @@ public sealed class Ps4FpkgBackend : IPackageBackend
             File.Copy(source, target, true);
         }
 
-        var biosSource = Path.Combine(_runtimeRoot, "bios");
-        var biosTarget = Path.Combine(app0, "bios");
-        foreach (var source in Directory.EnumerateFiles(biosSource, "*", SearchOption.AllDirectories))
+        // PSX-FPKG's PS1HD runtime is more than eboot + PRXs. Its assets
+        // tree contains the emulator UI/localization resources and the BIOS
+        // images under assets/PS1HD/bios. Preserve that tree verbatim.
+        var assetsSource = Path.Combine(_runtimeRoot, "assets");
+        var assetsTarget = Path.Combine(app0, "assets");
+        foreach (var source in Directory.EnumerateFiles(assetsSource, "*", SearchOption.AllDirectories))
         {
-            var relative = Path.GetRelativePath(biosSource, source);
-            var target = Path.Combine(biosTarget, relative);
+            var relative = Path.GetRelativePath(assetsSource, source);
+            var target = Path.Combine(assetsTarget, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(source, target, true);
+        }
+
+        foreach (var name in new[] { "package-ps4.conf", "revision.conf", "info.txt" })
+        {
+            var source = Path.Combine(_runtimeRoot, name);
+            if (!File.Exists(source))
+                continue;
+            File.Copy(source, Path.Combine(app0, name), true);
         }
 
         progress?.Report("Building inner PFS...");
