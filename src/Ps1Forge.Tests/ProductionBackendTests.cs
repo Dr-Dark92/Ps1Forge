@@ -27,7 +27,8 @@ public sealed class ProductionBackendTests
             {
                 var p=Path.Combine(runtime,relative.Replace('/',Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(p)!);
-                await File.WriteAllBytesAsync(p,Enumerable.Range(0,4096).Select(i=>(byte)(i*19+relative.Length)).ToArray());
+                var size = relative == "sce_sys/npbind.dat" ? 0x214 : 4096;
+                await File.WriteAllBytesAsync(p,Enumerable.Range(0,size).Select(i=>(byte)(i*19+relative.Length)).ToArray());
             }
 
             var bios=Path.Combine(runtime,"bios");
