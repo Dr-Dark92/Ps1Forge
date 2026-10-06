@@ -49,7 +49,16 @@ public static class PkgBodyBuilder
         // sorted by ID. This mirrors the reference builder.
         var entries = input.ToList();
         StabilizePlayGoShaSize(entries, outerPfsSize);
+
+        // The entry-name table must be built after all named entries exist.
+        // The reference builder initially creates 0x200 empty, then rebuilds it
+        // from the final entry list. Keeping Data synchronized is essential:
+        // DataSize is derived from Data.Length during layout planning.
         var names = BuildNames(entries);
+        var entryNames = entries.FirstOrDefault(e => e.Id == EntryNames);
+        if (entryNames is not null)
+            entryNames.Data = names;
+
         var count = entries.Count;
 
         var cursor = PkgHeader.BodyOffset;
