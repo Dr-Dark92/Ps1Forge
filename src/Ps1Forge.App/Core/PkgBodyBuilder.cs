@@ -11,6 +11,9 @@ public sealed record PkgBodyEntry(uint Id, string Name, byte[] Data, uint Flags1
     public uint DataOffset { get; set; }
     public uint LogicalSize { get; set; }
     public uint DataSize => LogicalSize == 0 ? checked((uint)Data.Length) : LogicalSize;
+    public uint StoredSize => (Flags1 & 0x80000000u) != 0 ? Align16(DataSize) : DataSize;
+
+    private static uint Align16(uint value) => (value + 15u) & ~15u;
 }
 
 public sealed record PkgBodyLayout(
@@ -69,7 +72,7 @@ public static class PkgBodyBuilder
             e.LogicalSize = e.Id is Metas or Digests
                 ? checked((uint)(count * 32))
                 : checked((uint)e.Data.Length);
-            cursor += e.LogicalSize;
+            cursor += e.StoredSize;
         }
 
         var bodySize = Align(cursor, 0x80000) - PkgHeader.BodyOffset;
@@ -134,7 +137,11 @@ public static class PkgBodyBuilder
             if (data.Length != e.DataSize)
                 throw new InvalidDataException($"PKG entry 0x{e.Id:X8} planned {e.DataSize} bytes but produced {data.Length}.");
             if ((e.Flags1 & 0x80000000u) != 0)
-                data = PkgEntryCrypto.Encrypt(e.Id, e.NameOffset, e.Flags1, e.Flags2, e.DataOffset, data, contentId, passcode);
+            {
+                if (data.Length != e.StoredSize)
+                    Array.Resize(ref data, checked((int)e.StoredSize));
+                data = PkgEntryCrypto.Encrypt(e.Id, e.NameOffset, e.Flags1, e.Flags2, e.DataOffset, e.DataSize, data, contentId, passcode);
+            }
             await output.WriteAsync(data, ct);
         }
         if ((ulong)output.Length < layout.PfsOffset)
@@ -162,7 +169,8 @@ public static class PkgBodyBuilder
                 var size=e.Id is Metas or Digests
                     ? checked((uint)(entries.Count*32))
                     : checked((uint)e.Data.Length);
-                cursor+=Align(size,16);
+                var storedSize=(e.Flags1&0x80000000u)!=0 ? Align(size,16) : size;
+                cursor+=storedSize;
             }
             var bodySize=Align(cursor,0x80000)-PkgHeader.BodyOffset;
             var packageSize=PkgHeader.BodyOffset+bodySize+outerPfsSize;
