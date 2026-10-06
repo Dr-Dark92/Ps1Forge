@@ -12,6 +12,8 @@ public sealed class SfoMetadataTests
         Assert.Equal(1660, sfo.Length);
 
         var ascii = System.Text.Encoding.ASCII.GetString(sfo);
+        Assert.Contains("img0_sc_ksize=2048", ascii);
+        Assert.DoesNotContain("img0_sc_ksize=512", ascii);
         for (var i = 1; i <= 7; i++)
             Assert.Contains($"SERVICE_ID_ADDCONT_ADD_{i}", ascii);
     }
