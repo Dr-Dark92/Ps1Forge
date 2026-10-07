@@ -33,7 +33,7 @@ public sealed class PkgRoundTripTests
                     return wrapped;
                 });
 
-            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},0x10000,crypto);
+            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},0x10000,crypto, Enumerable.Range(0,0x214).Select(i=>(byte)(i*17+3)).ToArray());
             var planned=PkgBodyBuilder.Plan(entries,(ulong)new FileInfo(pfs).Length);
             var namesEntry=planned.Entries.Single(e=>e.Id==PkgBodyBuilder.EntryNames);
             Assert.NotEmpty(namesEntry.Data);
