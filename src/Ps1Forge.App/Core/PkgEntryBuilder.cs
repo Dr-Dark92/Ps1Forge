@@ -45,7 +45,7 @@ public static class PkgEntryBuilder
         };
 
         RequireSize(npbindDat,0x214,nameof(npbindDat));
-        entries.Add(new PkgBodyEntry(PkgBodyBuilder.NpBindDat,"npbind.dat",npbindDat,0x80000000,3u<<12));
+        entries.Add(new PkgBodyEntry(PkgBodyBuilder.NpBindDat,"",npbindDat,0x80000000,3u<<12));
 
         if(pic1Png is { Length: > 0 })
             entries.Add(new PkgBodyEntry(PkgBodyBuilder.Pic1Png,"pic1.png",pic1Png));
