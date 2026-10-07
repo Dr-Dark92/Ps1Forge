@@ -154,6 +154,20 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         var changeInfo=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"changeinfo","changeinfo.xml"),cancellationToken);
         var icon0Dds=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"icon0.dds"),cancellationToken);
         var pic1Dds=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"pic1.dds"),cancellationToken);
+
+        // PSX-FPKG reference packages always carry legacy DXT1 mirrors of the
+        // sce_sys artwork. Some runtime dumps omit those template files, so
+        // generate them deterministically instead of silently dropping PKG
+        // entries 0x1280 and 0x12C0.
+        icon0Dds ??= DdsDxt1Encoder.Encode(icon0,512,512);
+        if(pic1 is { Length: > 0 })
+            pic1Dds ??= DdsDxt1Encoder.Encode(pic1,1920,1080);
+
+        if(icon0Dds.Length!=0x20080)
+            throw new InvalidDataException($"icon0.dds must be 0x20080 bytes, got 0x{icon0Dds.Length:X}.");
+        if(pic1 is { Length: > 0 } && pic1Dds?.Length!=0xFD280)
+            throw new InvalidDataException($"pic1.dds must be 0xFD280 bytes, got 0x{pic1Dds?.Length ?? 0:X}.");
+
         var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat,pic1,shareParam,saveData,changeInfo,icon0Dds,pic1Dds);
 
         progress?.Report("Assembling PS4 package...");
