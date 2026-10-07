@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-
 namespace Ps1Forge.Core;
 
 public static class Ps4Metadata
@@ -18,9 +15,7 @@ public static class Ps4Metadata
     public static string ContentId(string ps1Serial)
     {
         var titleId = NormalizeTitleId(ps1Serial);
-        var hash = SHA256.HashData(Encoding.ASCII.GetBytes("ps1_" + titleId));
-        var suffix = Convert.ToHexString(hash)[..16];
-        return $"UP9000-{titleId}_00-{suffix}";
+        return $"UP9000-{titleId}_00-{titleId}PSXFPKG";
     }
 
     public static byte[] BuildParamSfo(string title, string ps1Serial, ulong packageSize = 0)
