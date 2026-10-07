@@ -41,6 +41,7 @@ public static class PkgBodyBuilder
     public const uint PlayGoChunkSha = 0x00001002;
     public const uint PlayGoManifest = 0x00001003;
     public const uint Pic1Png = 0x00001006;
+    public const uint ShareParamJson = 0x0000100B;
     public const uint SaveDataPng = 0x0000100D;
     public const uint Icon0Png = 0x00001200;
     public const uint Pic0Png = 0x00001220;
