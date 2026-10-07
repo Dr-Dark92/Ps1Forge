@@ -82,7 +82,7 @@ public sealed class NpdrmEntryTests
 
         Assert.Equal(21, layout.Entries.Count);
         Assert.Equal(expected, layout.Entries.Select(x => x.Id).OrderBy(x => x).ToArray());
-        Assert.Equal(21 * 32, Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.Metas).DataSize);
-        Assert.Equal(21 * 32, Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.Digests).DataSize);
+        Assert.Equal(21u * 32u, Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.Metas).DataSize);
+        Assert.Equal(21u * 32u, Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.Digests).DataSize);
     }
 }
