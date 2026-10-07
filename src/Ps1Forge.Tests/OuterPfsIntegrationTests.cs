@@ -36,7 +36,7 @@ public sealed class OuterPfsIntegrationTests
                     digest.CopyTo(wrapped,0);
                     return wrapped;
                 });
-            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},0x30000,crypto);
+            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},0x30000,crypto, Enumerable.Range(0,0x214).Select(i=>(byte)(i*17+3)).ToArray());
             var pkg=Path.Combine(root,"outer-pfs-fixture.pkg");
             var validation=await PkgAssembler.AssembleAsync(
                 pkg,outer,contentId,passcode,entries,param,
