@@ -106,7 +106,8 @@ public static class PkgValidator
         for(var i=1;i<sorted.Count;i++)
         {
             var e=sorted[i];
-            var storedSize=(e.Flags1&0x80000000u)!=0 ? (e.DataSize+15u)&~15u : e.DataSize;\n            var actual=await HashRangeAsync(fs,e.DataOffset,storedSize,ct);
+            var storedSize=(e.Flags1&0x80000000u)!=0 ? (e.DataSize+15u)&~15u : e.DataSize;
+            var actual=await HashRangeAsync(fs,e.DataOffset,storedSize,ct);
             if(!actual.AsSpan().SequenceEqual(table.AsSpan(i*32,32)))
                 errors.Add($"Entry digest mismatch for 0x{e.Id:X8}.");
         }
