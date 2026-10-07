@@ -13,7 +13,8 @@ public static class Ps1Runtime
         "sce_module/libc.prx",
         "sce_module/libSceFios2.prx",
         "sce_module/libSceNpToolkit2.prx",
-        "sce_sys/npbind.dat"
+        "sce_discmap.plt",
+        "sce_sys/about/right.sprx"
     ];
 
     public static RuntimeValidation Validate(string root)
@@ -24,6 +25,8 @@ public static class Ps1Runtime
             .ToList();
 
         var npbind = Path.Combine(root, "sce_sys", "npbind.dat");
+        if (!File.Exists(npbind))
+            missing.Add("sce_sys/npbind.dat (package metadata)");
         if (File.Exists(npbind) && new FileInfo(npbind).Length != 0x214)
             missing.Add("sce_sys/npbind.dat (must be exactly 532 bytes)");
 
