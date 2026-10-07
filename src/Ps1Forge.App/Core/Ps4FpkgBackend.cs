@@ -145,7 +145,13 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         var npbindDat=await File.ReadAllBytesAsync(npbindPath,cancellationToken);
         if(npbindDat.Length!=0x214)
             throw new InvalidDataException("PS1HD template sce_sys/npbind.dat must be exactly 532 bytes.");
-        var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat);
+        static async Task<byte[]?> ReadOptionalAsync(string path,CancellationToken ct)
+            => File.Exists(path) ? await File.ReadAllBytesAsync(path,ct) : null;
+        var sceSysTemplate=Path.Combine(_runtimeRoot,"sce_sys");
+        var pic1=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"pic1.png"),cancellationToken);
+        var shareParam=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"shareparam.json"),cancellationToken);
+        var saveData=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"save_data.png"),cancellationToken);
+        var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat,pic1,shareParam,saveData);
 
         progress?.Report("Assembling PS4 package...");
         Directory.CreateDirectory(outputDirectory);
