@@ -68,8 +68,9 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Preparing PS4 metadata...");
         var title = analysis.Serial;
+        // param.sfo is a PKG metadata entry (0x1000), not an app0/inner-PFS file.
+        // Keep it in memory for PkgEntryBuilder instead of leaking it into /sce_sys.
         var paramSfo = Ps4Metadata.BuildParamSfo(title, analysis.Serial);
-        await File.WriteAllBytesAsync(Path.Combine(sceSys, "param.sfo"), paramSfo, cancellationToken);
 
         progress?.Report("Generating keystone...");
         const string packagePasscode = "00000000000000000000000000000000";
