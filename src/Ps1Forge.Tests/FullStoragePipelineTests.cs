@@ -40,7 +40,7 @@ public sealed class FullStoragePipelineTests
                 new byte[0x800],new byte[0x100],
                 DebugRifSigner.Sign(PkgLicense.BuildUnsignedDebugRif(contentId)),
                 digest=>{var w=new byte[0x100];digest.CopyTo(w,0);return w;});
-            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},(ulong)new FileInfo(inner).Length,crypto);
+            var entries=PkgEntryBuilder.Build(contentId,param,new byte[]{1,2,3,4},(ulong)new FileInfo(inner).Length,crypto, Enumerable.Range(0,0x214).Select(i=>(byte)(i*17+3)).ToArray());
             var pkg=Path.Combine(root,"storage-pipeline.pkg");
             var validation=await PkgAssembler.AssembleAsync(
                 pkg,outer,contentId,passcode,entries,param,
