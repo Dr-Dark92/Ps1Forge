@@ -65,7 +65,7 @@ public static class PkgValidator
         return new(errors.Count==0,errors);
     }
 
-    private sealed record ParsedEntry(uint Id,uint DataOffset,uint DataSize);
+    private sealed record ParsedEntry(uint Id,uint DataOffset,uint DataSize,uint Flags1);
 
     private static async Task<List<ParsedEntry>> ValidateEntriesAsync(FileStream fs,uint count,uint table,ulong body,ulong bodySize,List<string> errors,CancellationToken ct)
     {
@@ -79,13 +79,13 @@ public static class PkgValidator
         for(var i=0;i<count;i++)
         {
             var o=checked((int)i*32);
-            var id=BE32(raw,o); var dataOffset=BE32(raw,o+16); var dataSize=BE32(raw,o+20);
+            var id=BE32(raw,o); var flags1=BE32(raw,o+8); var dataOffset=BE32(raw,o+16); var dataSize=BE32(raw,o+20);
             if(i>0&&id<lastId) errors.Add("Entry table is not sorted by ID.");
             lastId=id;
             var start=(ulong)dataOffset; var end=start+dataSize;
             if(start<body||end>body+bodySize) errors.Add($"Entry 0x{id:X8} lies outside the package body.");
             if((start&0xFUL)!=0) errors.Add($"Entry 0x{id:X8} is not 16-byte aligned.");
-            parsed.Add(new ParsedEntry(id,dataOffset,dataSize));
+            parsed.Add(new ParsedEntry(id,dataOffset,dataSize,flags1));
             if(dataSize>0) ranges.Add((start,end,id));
         }
         var ordered=ranges.OrderBy(x=>x.Start).ToList();
@@ -106,7 +106,7 @@ public static class PkgValidator
         for(var i=1;i<sorted.Count;i++)
         {
             var e=sorted[i];
-            var actual=await HashRangeAsync(fs,e.DataOffset,e.DataSize,ct);
+            var storedSize=(e.Flags1&0x80000000u)!=0 ? (e.DataSize+15u)&~15u : e.DataSize;\n            var actual=await HashRangeAsync(fs,e.DataOffset,storedSize,ct);
             if(!actual.AsSpan().SequenceEqual(table.AsSpan(i*32,32)))
                 errors.Add($"Entry digest mismatch for 0x{e.Id:X8}.");
         }
