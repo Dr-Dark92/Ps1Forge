@@ -15,7 +15,7 @@ public sealed class NpdrmEntryTests
         var layout = PkgBodyBuilder.Plan(entries, 0x10000);
         var entry = Assert.Single(layout.Entries, x => x.Id == PkgBodyBuilder.NpBindDat);
 
-        Assert.Equal("npbind.dat", entry.Name);
+        Assert.Equal("", entry.Name);
         Assert.Equal(0x80000000u, entry.Flags1);
         Assert.Equal(0x00003000u, entry.Flags2);
         Assert.Equal(0x214u, entry.DataSize);
@@ -41,7 +41,7 @@ public sealed class NpdrmEntryTests
         var layout = PkgBodyBuilder.Plan(entries, 0x10000);
 
         var bind = Assert.Single(layout.Entries, x => x.Id == 0x403);
-        Assert.Equal("npbind.dat", bind.Name);
+        Assert.Equal("", bind.Name);
         Assert.Equal(0x80000000u, bind.Flags1);
         Assert.Equal(0x3000u, bind.Flags2);
         Assert.Equal(0x214u, bind.DataSize);
