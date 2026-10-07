@@ -8,5 +8,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Ps1Forge</AssemblyName>
     <RootNamespace>Ps1Forge</RootNamespace>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 </Project>
