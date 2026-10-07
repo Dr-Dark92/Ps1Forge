@@ -151,7 +151,10 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         var pic1=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"pic1.png"),cancellationToken);
         var shareParam=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"shareparam.json"),cancellationToken);
         var saveData=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"save_data.png"),cancellationToken);
-        var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat,pic1,shareParam,saveData);
+        var changeInfo=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"changeinfo","changeinfo.xml"),cancellationToken);
+        var icon0Dds=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"icon0.dds"),cancellationToken);
+        var pic1Dds=await ReadOptionalAsync(Path.Combine(sceSysTemplate,"pic1.dds"),cancellationToken);
+        var entries=PkgEntryBuilder.Build(contentId,paramSfo,icon0,checked((ulong)new FileInfo(innerPfs).Length),crypto,npbindDat,pic1,shareParam,saveData,changeInfo,icon0Dds,pic1Dds);
 
         progress?.Report("Assembling PS4 package...");
         Directory.CreateDirectory(outputDirectory);
