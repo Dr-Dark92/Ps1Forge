@@ -35,7 +35,12 @@ public static class PkgFinalizer
             for(var i=1;i<sorted.Count;i++)
             {
                 var e=sorted[i];
-                // NPDRM DIGESTS covers the bytes physically stored in the PKG.\n                // Encrypted entries are AES-CBC padded to a 16-byte boundary while\n                // METAS keeps the logical plaintext DataSize (e.g. npbind 0x214 -> 0x220).\n                // Sony/reference packages hash the full stored ciphertext, not only DataSize.\n                var storedSize=(e.Flags1&0x80000000u)!=0 ? (e.DataSize+15u)&~15u : e.DataSize;\n                var hash=await HashRangeAsync(pkg,e.DataOffset,storedSize,ct);
+                // NPDRM DIGESTS covers the bytes physically stored in the PKG.
+                // Encrypted entries are AES-CBC padded to a 16-byte boundary while
+                // METAS keeps the logical plaintext DataSize (e.g. npbind 0x214 -> 0x220).
+                // Sony/reference packages hash the full stored ciphertext, not only DataSize.
+                var storedSize=(e.Flags1&0x80000000u)!=0 ? (e.DataSize+15u)&~15u : e.DataSize;
+                var hash=await HashRangeAsync(pkg,e.DataOffset,storedSize,ct);
                 hash.CopyTo(table,i*32);
             }
             if(table.Length!=digestEntry.DataSize) throw new InvalidDataException("PKG digest table size mismatch.");
