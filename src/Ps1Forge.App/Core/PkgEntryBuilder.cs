@@ -17,7 +17,10 @@ public static class PkgEntryBuilder
         byte[] npbindDat,
         byte[]? pic1Png = null,
         byte[]? shareParamJson = null,
-        byte[]? saveDataPng = null)
+        byte[]? saveDataPng = null,
+        byte[]? changeInfoXml = null,
+        byte[]? icon0Dds = null,
+        byte[]? pic1Dds = null)
     {
         RequireSize(crypto.EntryKeys,0x800,nameof(crypto.EntryKeys));
         RequireSize(crypto.ImageKey,0x100,nameof(crypto.ImageKey));
@@ -50,6 +53,12 @@ public static class PkgEntryBuilder
             entries.Add(new PkgBodyEntry(PkgBodyBuilder.ShareParamJson,"shareparam.json",shareParamJson));
         if(saveDataPng is { Length: > 0 })
             entries.Add(new PkgBodyEntry(PkgBodyBuilder.SaveDataPng,"save_data.png",saveDataPng));
+        if(changeInfoXml is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.ChangeInfoXml,"changeinfo/changeinfo.xml",changeInfoXml));
+        if(icon0Dds is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.Icon0Dds,"icon0.dds",icon0Dds));
+        if(pic1Dds is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.Pic1Dds,"pic1.dds",pic1Dds));
 
         return entries;
     }
