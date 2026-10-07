@@ -31,6 +31,10 @@ public sealed class ProductionBackendTests
                 await File.WriteAllBytesAsync(p,Enumerable.Range(0,size).Select(i=>(byte)(i*19+relative.Length)).ToArray());
             }
 
+            var npbind=Path.Combine(runtime,"sce_sys","npbind.dat");
+            Directory.CreateDirectory(Path.GetDirectoryName(npbind)!);
+            await File.WriteAllBytesAsync(npbind,new byte[0x214]);
+
             var assetsCommon=Path.Combine(runtime,"assets","common");
             Directory.CreateDirectory(assetsCommon);
             await File.WriteAllBytesAsync(Path.Combine(assetsCommon,"test.png"),new byte[4096]);
