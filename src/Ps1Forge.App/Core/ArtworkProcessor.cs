@@ -115,7 +115,7 @@ public static class ArtworkProcessor
                 };
                 var residual = unchecked((byte)(value - predictor));
                 result[x * 3 + c] = residual;
-                score += Math.Abs((sbyte)residual);
+                score += Math.Abs((int)(sbyte)residual);
             }
         }
         return (type, result, score);
