@@ -14,7 +14,10 @@ public static class PkgEntryBuilder
         byte[] icon0,
         ulong innerPfsSize,
         PkgPreparedCrypto crypto,
-        byte[] npbindDat)
+        byte[] npbindDat,
+        byte[]? pic1Png = null,
+        byte[]? shareParamJson = null,
+        byte[]? saveDataPng = null)
     {
         RequireSize(crypto.EntryKeys,0x800,nameof(crypto.EntryKeys));
         RequireSize(crypto.ImageKey,0x100,nameof(crypto.ImageKey));
@@ -40,6 +43,13 @@ public static class PkgEntryBuilder
 
         RequireSize(npbindDat,0x214,nameof(npbindDat));
         entries.Add(new PkgBodyEntry(PkgBodyBuilder.NpBindDat,"npbind.dat",npbindDat,0x80000000,3u<<12));
+
+        if(pic1Png is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.Pic1Png,"pic1.png",pic1Png));
+        if(shareParamJson is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.ShareParamJson,"shareparam.json",shareParamJson));
+        if(saveDataPng is { Length: > 0 })
+            entries.Add(new PkgBodyEntry(PkgBodyBuilder.SaveDataPng,"save_data.png",saveDataPng));
 
         return entries;
     }
