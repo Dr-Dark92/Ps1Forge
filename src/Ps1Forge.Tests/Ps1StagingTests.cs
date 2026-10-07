@@ -42,10 +42,14 @@ public sealed class Ps1StagingTests
             await File.WriteAllBytesAsync(Path.Combine(data,"disc1.toc"),toc);
 
             var config=Ps1ConfigBuilder.Build("SCUS-94154","NTSC-U");
-            Assert.Contains("--ps1-title-id=SCUS94154",config);
-            Assert.Contains("--region=\"SCEA\"",config);
+            Assert.Contains("--ps4-trophies = 0",config);
+            Assert.Contains("--ps5-uds=0",config);
+            Assert.Contains("--trophies=0",config);
             Assert.Contains("--image=\"data/disc1.bin\"",config);
-            Assert.Contains("--bios-dir=\"bios\"",config);
+            Assert.Contains("--scale=6",config);
+            Assert.Contains("--bios-hide-sce-osd=1",config);
+            Assert.DoesNotContain("--ps1-title-id",config);
+            Assert.DoesNotContain("--bios-dir",config);
         }
         finally
         {
