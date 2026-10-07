@@ -45,6 +45,9 @@ public static class PkgBodyBuilder
     public const uint SaveDataPng = 0x0000100D;
     public const uint Icon0Png = 0x00001200;
     public const uint Pic0Png = 0x00001220;
+    public const uint ChangeInfoXml = 0x00001260;
+    public const uint Icon0Dds = 0x00001280;
+    public const uint Pic1Dds = 0x000012C0;
 
     public static PkgBodyLayout Plan(
         IEnumerable<PkgBodyEntry> input,
