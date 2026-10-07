@@ -190,7 +190,12 @@ public static class PkgBodyBuilder
     {
         var data = new List<byte> { 0 };
         var offsets = new Dictionary<string,uint>(StringComparer.Ordinal) { [""] = 0 };
-        foreach (var e in entries)
+        // ENTRY_NAMES is an ID-indexed NPDRM structure, just like METAS and
+        // DIGESTS. The reference package assigns names in ascending entry-ID
+        // order (param.sfo=1, playgo-chunk.dat=0x0B, ...), not body-placement
+        // order. Launch-time sceNpDrmContentCheckEntryIndexes validates this
+        // relationship before AppSubcontainerGetParamSfo().
+        foreach (var e in entries.OrderBy(x => x.Id))
         {
             if (string.IsNullOrEmpty(e.Name)) { e.NameOffset = 0; continue; }
             if (!offsets.TryGetValue(e.Name, out var off))
