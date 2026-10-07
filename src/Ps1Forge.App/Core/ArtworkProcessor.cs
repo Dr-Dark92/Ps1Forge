@@ -35,20 +35,20 @@ public static class ArtworkProcessor
         // System.Drawing's PNG encoder produced ~782 KiB for otherwise simple
         // 512x512 artwork. Write a deterministic RGB PNG with PNG filtering +
         // zlib compression so package metadata stays compact.
-        WriteRgbPng(canvas, output);
+        WriteIndexedPng(canvas, output);
         return output;
     }
 
-    private static void WriteRgbPng(Bitmap bitmap, string output)
+    private static void WriteIndexedPng(Bitmap bitmap, string output)
     {
         const int width = 512, height = 512;
-        var raw = new byte[height * (1 + width * 3)];
+        var raw = new byte[height * (1 + width)];
         var rect = new Rectangle(0, 0, width, height);
         var data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
         try
         {
             var stride = Math.Abs(data.Stride);
-            var row = new byte[stride];
+            var bgr = new byte[stride];
             byte[]? previous = null;
             var dst = 0;
             for (var y = 0; y < height; y++)
@@ -56,28 +56,37 @@ public static class ArtworkProcessor
                 var srcPtr = data.Stride > 0
                     ? IntPtr.Add(data.Scan0, y * data.Stride)
                     : IntPtr.Add(data.Scan0, (height - 1 - y) * stride);
-                Marshal.Copy(srcPtr, row, 0, stride);
+                Marshal.Copy(srcPtr, bgr, 0, stride);
 
-                // Adaptive PNG filtering. Choose the filter with the smallest
-                // sum of absolute signed residuals for this scanline.
-                var best = FilterRow(row, previous, width, 0);
+                var indices = new byte[width];
+                for (var x = 0; x < width; x++)
+                {
+                    var b = bgr[x * 3];
+                    var g = bgr[x * 3 + 1];
+                    var r = bgr[x * 3 + 2];
+                    // Deterministic RGB332 palette: 3 red bits, 3 green, 2 blue.
+                    indices[x] = (byte)((r & 0xE0) | ((g & 0xE0) >> 3) | (b >> 6));
+                }
+
+                var best = FilterIndexedRow(indices, previous, 0);
                 for (byte filter = 1; filter <= 4; filter++)
                 {
-                    var candidate = FilterRow(row, previous, width, filter);
+                    var candidate = FilterIndexedRow(indices, previous, filter);
                     if (candidate.Score < best.Score) best = candidate;
                 }
 
                 raw[dst++] = best.Type;
-                Buffer.BlockCopy(best.Bytes, 0, raw, dst, best.Bytes.Length);
-                dst += best.Bytes.Length;
-                previous = row.ToArray();
+                Buffer.BlockCopy(best.Bytes, 0, raw, dst, width);
+                dst += width;
+                previous = indices;
             }
         }
         finally { bitmap.UnlockBits(data); }
 
         using var fs = File.Create(output);
         fs.Write(new byte[] { 137,80,78,71,13,10,26,10 });
-        WriteChunk(fs, "IHDR", BuildIhdr(width, height));
+        WriteChunk(fs, "IHDR", BuildIhdr(width, height, 3));
+        WriteChunk(fs, "PLTE", BuildRgb332Palette());
 
         byte[] compressed;
         using (var ms = new MemoryStream())
@@ -90,33 +99,42 @@ public static class ArtworkProcessor
         WriteChunk(fs, "IEND", Array.Empty<byte>());
     }
 
-    private static (byte Type, byte[] Bytes, long Score) FilterRow(byte[] bgr, byte[]? prevBgr, int width, byte type)
+    private static byte[] BuildRgb332Palette()
     {
-        const int bpp = 3;
-        var result = new byte[width * bpp];
-        long score = 0;
-        for (var x = 0; x < width; x++)
+        var palette = new byte[256 * 3];
+        for (var i = 0; i < 256; i++)
         {
-            // Bitmap stores BGR; PNG stores RGB.
-            for (var c = 0; c < 3; c++)
+            var r3 = (i >> 5) & 7;
+            var g3 = (i >> 2) & 7;
+            var b2 = i & 3;
+            palette[i * 3] = (byte)((r3 * 255 + 3) / 7);
+            palette[i * 3 + 1] = (byte)((g3 * 255 + 3) / 7);
+            palette[i * 3 + 2] = (byte)((b2 * 255 + 1) / 3);
+        }
+        return palette;
+    }
+
+    private static (byte Type, byte[] Bytes, long Score) FilterIndexedRow(byte[] row, byte[]? previous, byte type)
+    {
+        var result = new byte[row.Length];
+        long score = 0;
+        for (var x = 0; x < row.Length; x++)
+        {
+            var value = row[x];
+            var left = x == 0 ? 0 : row[x - 1];
+            var up = previous is null ? 0 : previous[x];
+            var upLeft = x == 0 || previous is null ? 0 : previous[x - 1];
+            var predictor = type switch
             {
-                var sourceIndex = x * 3 + (2 - c);
-                var value = bgr[sourceIndex];
-                var left = x == 0 ? 0 : bgr[(x - 1) * 3 + (2 - c)];
-                var up = prevBgr is null ? 0 : prevBgr[sourceIndex];
-                var upLeft = x == 0 || prevBgr is null ? 0 : prevBgr[(x - 1) * 3 + (2 - c)];
-                var predictor = type switch
-                {
-                    1 => left,
-                    2 => up,
-                    3 => (left + up) / 2,
-                    4 => Paeth(left, up, upLeft),
-                    _ => 0
-                };
-                var residual = unchecked((byte)(value - predictor));
-                result[x * 3 + c] = residual;
-                score += Math.Abs((int)(sbyte)residual);
-            }
+                1 => left,
+                2 => up,
+                3 => (left + up) / 2,
+                4 => Paeth(left, up, upLeft),
+                _ => 0
+            };
+            var residual = unchecked((byte)(value - predictor));
+            result[x] = residual;
+            score += Math.Abs((int)(sbyte)residual);
         }
         return (type, result, score);
     }
@@ -130,11 +148,11 @@ public static class ArtworkProcessor
         return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
     }
 
-    private static byte[] BuildIhdr(int width, int height)
+    private static byte[] BuildIhdr(int width, int height, byte colorType = 2)
     {
         var b = new byte[13];
         WriteBe32(b, 0, (uint)width); WriteBe32(b, 4, (uint)height);
-        b[8] = 8; b[9] = 2; // 8-bit RGB
+        b[8] = 8; b[9] = colorType;
         return b;
     }
 
