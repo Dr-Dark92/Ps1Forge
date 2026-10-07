@@ -80,7 +80,10 @@ public sealed class Ps4FpkgBackend : IPackageBackend
             cancellationToken);
 
         progress?.Report("Preparing artwork...");
-        ArtworkProcessor.CreateIcon(artworkPath, sceSys);
+        // Package artwork belongs to the outer PKG metadata, not app0.
+        // Staging it under app0/sce_sys leaked icon0.png into the inner PFS.
+        var packageMetadata = Path.Combine(stagingDirectory, "pkg-metadata");
+        var iconPath = ArtworkProcessor.CreateIcon(artworkPath, packageMetadata);
 
         progress?.Report("Preparing runtime files...");
         foreach (var relative in Ps1Runtime.RequiredFiles)
@@ -139,7 +142,6 @@ public sealed class Ps4FpkgBackend : IPackageBackend
 
         progress?.Report("Preparing final PKG entries...");
         var crypto=_crypto.Prepare(contentId,packagePasscode,ekpfs);
-        var iconPath=Path.Combine(sceSys,"icon0.png");
         var icon0=await File.ReadAllBytesAsync(iconPath,cancellationToken);
         var npbindPath=Path.Combine(_runtimeRoot,"sce_sys","npbind.dat");
         progress?.Report("Importing PS1HD template NPDRM binding metadata...");
