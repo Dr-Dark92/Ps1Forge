@@ -48,7 +48,7 @@ public static class PkgHeader
         BE64(h, 0x428, packageSize);
         BE64(h, 0x430, packageSize);
         BE32(h, 0x438, 0x10000);
-        BE32(h, 0x43C, 0xE0000);
+        BE32(h, 0x43C, 0x90000);
         return h;
     }
 
