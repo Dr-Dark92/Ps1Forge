@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace Ps1Forge.Core;
 
 /// <summary>
@@ -128,7 +130,7 @@ public sealed class Ps4FpkgBackend : IPackageBackend
         progress?.Report("Building signed/encrypted outer PFS...");
         var contentId = Ps4Metadata.ContentId(analysis.Serial);
         var ekpfs = PackageCrypto.ComputeKey(contentId, packagePasscode, 1);
-        var seed = new byte[16];
+        var seed = RandomNumberGenerator.GetBytes(16);
         var outerPfs = Path.Combine(stagingDirectory, "outer.pfs");
         var outerSize = await OuterPfsWriter.BuildAsync(
             pfsc,
