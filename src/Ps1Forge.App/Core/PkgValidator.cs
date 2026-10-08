@@ -25,7 +25,7 @@ public static class PkgValidator
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x404,4))!=1) errors.Add("Unexpected PFS image count.");
         if(BinaryPrimitives.ReadUInt64BigEndian(pkg.Slice(0x408,8))!=0x80000000000003CCUL) errors.Add("Unexpected PFS flags.");
         if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x438,4))!=0x10000) errors.Add("Unexpected signed PFS size.");
-        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x43C,4))!=0xE0000) errors.Add("Unexpected PFS cache size.");
+        if(BinaryPrimitives.ReadUInt32BigEndian(pkg.Slice(0x43C,4))!=0x90000) errors.Add("Unexpected PFS cache size.");
         return new(errors.Count==0,errors);
     }
 
